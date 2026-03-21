@@ -4,6 +4,7 @@ import os
 import logging
 from dataclasses import dataclass
 
+import openai
 from openai import AsyncOpenAI
 
 logger = logging.getLogger("govassist")
@@ -70,7 +71,61 @@ class AIClient:
 
         Raises AIClientError on failure.
         """
-        raise NotImplementedError
+        try:
+            response = await self._client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            if not response.choices:
+                logger.error(
+                    "AI API returned empty choices: request_id=%s model=%s",
+                    request_id, model,
+                )
+                raise AIClientError("ai_invalid_response", "AI API が空の応答を返しました")
+            return response.choices[0].message.content or ""
+
+        except openai.APITimeoutError:
+            logger.error(
+                "AI API timeout: request_id=%s model=%s endpoint=%s",
+                request_id, model, self._base_url,
+            )
+            raise AIClientError("ai_timeout", "AI応答がタイムアウトしました（60秒）")
+
+        except openai.RateLimitError as e:
+            logger.error(
+                "AI API rate limit: request_id=%s model=%s status_code=429 error=%s",
+                request_id, model, str(e),
+            )
+            raise AIClientError("ai_rate_limit", "AI APIのレート制限に達しました")
+
+        except openai.APIStatusError as e:
+            logger.error(
+                "AI API error: request_id=%s model=%s status_code=%s error=%s",
+                request_id, model, e.status_code, str(e),
+            )
+            raise AIClientError("ai_invalid_response", "AI API エラーが発生しました")
+
+        except openai.APIConnectionError as e:
+            logger.error(
+                "AI API connection error: request_id=%s model=%s endpoint=%s error=%s",
+                request_id, model, self._base_url, str(e),
+            )
+            raise AIClientError("ai_invalid_response", "AI API への接続に失敗しました")
+
+        except AIClientError:
+            raise
+
+        except Exception as e:
+            logger.error(
+                "Unexpected AI client error: request_id=%s model=%s error=%s",
+                request_id, model, str(e),
+            )
+            raise AIClientError("ai_invalid_response", "AI API で予期しないエラーが発生しました")
 
 
 def create_ai_client() -> AIClient:

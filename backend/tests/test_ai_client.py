@@ -1,7 +1,7 @@
 """Tests for AI client service."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from services.ai_client import (
     AIClient,
@@ -60,3 +60,216 @@ class TestAIClientInit:
             base_url="https://api.env.com",
             timeout=60.0,
         )
+
+
+class TestComplete:
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_returns_response_text(self, mock_openai_cls):
+        mock_message = MagicMock()
+        mock_message.content = "校正済みテキスト"
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        result = await client.complete(
+            model="kimi-k2.5",
+            system_prompt="system prompt",
+            user_prompt="user prompt",
+            max_tokens=4096,
+            temperature=0.3,
+            request_id="test-request-123",
+        )
+
+        assert result == "校正済みテキスト"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_returns_empty_string_when_content_is_none(self, mock_openai_cls):
+        mock_message = MagicMock()
+        mock_message.content = None
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        result = await client.complete(
+            model="kimi-k2.5",
+            system_prompt="system",
+            user_prompt="user",
+            max_tokens=4096,
+            temperature=0.3,
+            request_id="test-request",
+        )
+
+        assert result == ""
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_passes_correct_parameters_to_openai(self, mock_openai_cls):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="text"))]
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        await client.complete(
+            model="kimi-k2.5",
+            system_prompt="sys",
+            user_prompt="usr",
+            max_tokens=2048,
+            temperature=0.5,
+            request_id="req-1",
+        )
+
+        mock_client.chat.completions.create.assert_called_once_with(
+            model="kimi-k2.5",
+            messages=[
+                {"role": "system", "content": "sys"},
+                {"role": "user", "content": "usr"},
+            ],
+            max_tokens=2048,
+            temperature=0.5,
+        )
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_empty_choices_raises_ai_invalid_response(self, mock_openai_cls):
+        mock_response = MagicMock()
+        mock_response.choices = []
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5",
+                system_prompt="s",
+                user_prompt="u",
+                max_tokens=4096,
+                temperature=0.3,
+                request_id="req-empty",
+            )
+
+        assert exc_info.value.error_code == "ai_invalid_response"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_unexpected_error_raises_ai_invalid_response(self, mock_openai_cls):
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=RuntimeError("unexpected SDK bug")
+        )
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5",
+                system_prompt="s",
+                user_prompt="u",
+                max_tokens=4096,
+                temperature=0.3,
+                request_id="req-unexpected",
+            )
+
+        assert exc_info.value.error_code == "ai_invalid_response"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_timeout_raises_ai_timeout_error(self, mock_openai_cls):
+        import openai
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APITimeoutError(request=MagicMock())
+        )
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                max_tokens=4096, temperature=0.3, request_id="req-timeout",
+            )
+        assert exc_info.value.error_code == "ai_timeout"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_rate_limit_raises_ai_rate_limit_error(self, mock_openai_cls):
+        import openai
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.RateLimitError(
+                message="Rate limit",
+                response=MagicMock(status_code=429),
+                body=None,
+            )
+        )
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                max_tokens=4096, temperature=0.3, request_id="req-rate",
+            )
+        assert exc_info.value.error_code == "ai_rate_limit"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_api_status_error_raises_ai_invalid_response(self, mock_openai_cls):
+        import openai
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIStatusError(
+                message="Server error",
+                response=MagicMock(status_code=500),
+                body=None,
+            )
+        )
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                max_tokens=4096, temperature=0.3, request_id="req-api",
+            )
+        assert exc_info.value.error_code == "ai_invalid_response"
+
+    @pytest.mark.asyncio
+    @patch("services.ai_client.AsyncOpenAI")
+    async def test_connection_error_raises_ai_invalid_response(self, mock_openai_cls):
+        import openai
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIConnectionError(request=MagicMock())
+        )
+        mock_openai_cls.return_value = mock_client
+
+        client = AIClient(api_key="test-key", base_url="https://api.test.com")
+        with pytest.raises(AIClientError) as exc_info:
+            await client.complete(
+                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                max_tokens=4096, temperature=0.3, request_id="req-conn",
+            )
+        assert exc_info.value.error_code == "ai_invalid_response"
