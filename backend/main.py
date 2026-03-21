@@ -1,8 +1,11 @@
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from fastapi import FastAPI
+
+from database import init_db, check_fts5_ngram_support
 
 logger = logging.getLogger("govassist")
 
@@ -51,27 +54,36 @@ def setup_logging() -> None:
     logger.addHandler(console_handler)
 
 
-app = FastAPI(
-    title="GovAssist API",
-    version="0.1.0",
-    docs_url="/docs",
-    redoc_url=None,
-)
+def get_cors_origins() -> list[str]:
+    """Parse CORS_ORIGINS env var into a list of stripped, non-empty origin strings."""
+    raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    return [o for o in (origin.strip() for origin in raw.split(",")) if o]
 
 
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "version": "0.1.0"}
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    application = FastAPI(
+        title="GovAssist API",
+        version="0.1.0",
+        docs_url="/docs",
+        redoc_url=None,
+    )
 
+    @application.get("/api/health")
+    def health():
+        return {"status": "ok", "version": "0.1.0"}
+
+    return application
+
+
+app = create_app()
 
 # DB 初期化（テーブルが存在しない場合は作成）
-from database import init_db
 init_db()
 
 setup_logging()
 
 # FTS5 ngram トークナイザ対応状況をログ出力
-from database import check_fts5_ngram_support
 if check_fts5_ngram_support():
     logger.info("FTS5 ngram tokenizer: supported")
 else:
