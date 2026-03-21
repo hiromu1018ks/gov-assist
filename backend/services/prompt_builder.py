@@ -40,8 +40,39 @@ def build_user_prompt(
     options: ProofreadOptions,
     text: str,
 ) -> str:
-    """Build the user prompt from document type, options, and input text."""
-    raise NotImplementedError
+    """Build the user prompt from document type, options, and input text.
+
+    §4.3 ユーザープロンプト（動的生成）
+    """
+    doc_label = DOCUMENT_TYPE_LABELS[document_type]
+
+    # 有効な校正オプションの表示名を取得
+    active_labels = [
+        OPTION_LABELS[field]
+        for field, label in OPTION_LABELS.items()
+        if getattr(options, field, False)
+    ]
+    options_text = "\n".join(f"- {label}" for label in active_labels)
+
+    return f"""文書種別：{doc_label}
+チェック項目：
+{options_text}
+入力文書：
+{text}
+
+以下の JSON 形式のみで返答してください：
+{{
+  "corrected_text": "校正済み全文（原文からの最小変更のみ）",
+  "summary": "校正のサマリー（修正件数・主要な指摘）",
+  "corrections": [
+    {{
+      "original": "修正前テキスト（原文から抜粋、50文字以内）",
+      "corrected": "修正後テキスト（50文字以内）",
+      "reason": "修正理由",
+      "category": "誤字脱字 | 敬語 | 用語 | 文体 | 法令 | 読みやすさ"
+    }}
+  ]
+}}"""
 
 
 def build_prompts(request: ProofreadRequest) -> tuple[str, str]:

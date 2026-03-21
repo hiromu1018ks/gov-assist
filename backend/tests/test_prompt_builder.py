@@ -77,3 +77,126 @@ class TestOptionLabels:
 
     def test_covers_all_option_fields(self):
         assert set(OPTION_LABELS.keys()) == set(ProofreadOptions.model_fields)
+
+
+class TestBuildUserPrompt:
+    def _default_options(self, **overrides) -> ProofreadOptions:
+        return ProofreadOptions(**overrides)
+
+    def test_includes_document_type_label(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.OFFICIAL,
+            options=self._default_options(),
+            text="テスト文書",
+        )
+        assert "文書種別：公文書" in prompt
+
+    def test_includes_enabled_options(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(typo=True, keigo=True, legal=False),
+            text="テスト",
+        )
+        assert "誤字・脱字・変換ミスの検出" in prompt
+        assert "敬語・丁寧語の適切さチェック" in prompt
+        assert "法令・条例用語の確認" not in prompt
+
+    def test_excludes_disabled_options(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(typo=False, keigo=False),
+            text="テスト",
+        )
+        assert "誤字・脱字" not in prompt
+        assert "敬語・丁寧語の適切さチェック" not in prompt
+
+    def test_includes_input_text(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(),
+            text="これはテスト文書です。",
+        )
+        assert "これはテスト文書です。" in prompt
+
+    def test_includes_json_template(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(),
+            text="テスト",
+        )
+        assert "corrected_text" in prompt
+        assert "summary" in prompt
+        assert "corrections" in prompt
+        assert "original" in prompt
+        assert "corrected" in prompt
+        assert "reason" in prompt
+        assert "category" in prompt
+
+    def test_json_template_does_not_include_position(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(),
+            text="テスト",
+        )
+        # position は JSON テンプレートに含めない（§4.3 注記）
+        assert '"position"' not in prompt
+
+    def test_all_document_types(self):
+        for doc_type in DocumentType:
+            prompt = build_user_prompt(
+                document_type=doc_type,
+                options=self._default_options(),
+                text="テスト",
+            )
+            expected_label = DOCUMENT_TYPE_LABELS[doc_type]
+            assert f"文書種別：{expected_label}" in prompt
+
+    def test_all_options_disabled(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.OTHER,
+            options=self._default_options(
+                typo=False, keigo=False, terminology=False,
+                style=False, legal=False, readability=False,
+            ),
+            text="テスト",
+        )
+        assert "チェック項目：" in prompt
+        # No option labels should appear
+        for label in OPTION_LABELS.values():
+            assert label not in prompt
+
+    def test_all_options_enabled(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.OFFICIAL,
+            options=self._default_options(
+                typo=True, keigo=True, terminology=True,
+                style=True, legal=True, readability=True,
+            ),
+            text="テスト",
+        )
+        for label in OPTION_LABELS.values():
+            assert label in prompt
+
+    def test_options_are_separated_by_line(self):
+        """有効オプションが改行区切りで出力されること"""
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(typo=True, keigo=True),
+            text="テスト",
+        )
+        lines = prompt.split("\n")
+        typo_found = keigo_found = False
+        for line in lines:
+            if "誤字・脱字" in line:
+                typo_found = True
+            if "敬語" in line:
+                keigo_found = True
+        assert typo_found and keigo_found
+
+    def test_multiline_input_text(self):
+        prompt = build_user_prompt(
+            document_type=DocumentType.EMAIL,
+            options=self._default_options(),
+            text="第1行\n第2行\n第3行",
+        )
+        assert "第1行\n第2行\n第3行" in prompt
