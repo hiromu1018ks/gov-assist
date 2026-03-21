@@ -64,4 +64,15 @@ def health():
     return {"status": "ok", "version": "0.1.0"}
 
 
+# DB 初期化（テーブルが存在しない場合は作成）
+from database import init_db
+init_db()
+
 setup_logging()
+
+# FTS5 ngram トークナイザ対応状況をログ出力
+from database import check_fts5_ngram_support
+if check_fts5_ngram_support():
+    logger.info("FTS5 ngram tokenizer: supported")
+else:
+    logger.warning("FTS5 ngram tokenizer: NOT supported. Unicode61 will be used as fallback.")
