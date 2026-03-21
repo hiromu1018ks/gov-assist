@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db, check_fts5_ngram_support
 
@@ -60,13 +61,25 @@ def get_cors_origins() -> list[str]:
     return [o for o in (origin.strip() for origin in raw.split(",")) if o]
 
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+def create_app(enable_origin_check: bool = True) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        enable_origin_check: When False, skip Origin check middleware (for testing).
+    """
     application = FastAPI(
         title="GovAssist API",
         version="0.1.0",
         docs_url="/docs",
         redoc_url=None,
+    )
+
+    # CORS middleware (inner — runs after Origin check)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_cors_origins(),
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "PUT"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     )
 
     @application.get("/api/health")
