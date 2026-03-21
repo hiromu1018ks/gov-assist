@@ -94,11 +94,33 @@ def _validate_corrections(raw_corrections: list) -> list[CorrectionItem]:
 
 
 def _fallback_extract(text: str) -> tuple[str, bool]:
-    """Fallback extraction when JSON parsing fails.
+    """Fallback extraction when JSON parsing fails completely.
 
-    §4.4 fallback 抽出
+    §4.4 fallback 抽出:
+    1. Regex: "corrected_text"\\s*:\\s*"(.*?)" でフィールドを抽出
+    2. JSON 構造を除いた平文テキスト部分を表示
+    3. 上記すべて失敗 → 空文字、失敗
     """
-    raise NotImplementedError
+    # Step 1: Regex extraction of corrected_text field
+    match = re.search(r'"corrected_text"\s*:\s*"(.*?)"', text, flags=re.DOTALL)
+    if match:
+        return match.group(1), True
+
+    # Step 2a: Find all string values, return the longest one
+    strings = re.findall(r'"((?:[^"\\]|\\.)*)"', text)
+    if strings:
+        longest = max(strings, key=len)
+        if len(longest) > 10:
+            return longest, True
+
+    # Step 2b: Strip JSON structure characters, return remaining text
+    cleaned = re.sub(r'[\{\}\[\]\"\'\\:,]', ' ', text)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    if cleaned and len(cleaned) > 5:
+        return cleaned, True
+
+    # Step 3: Complete failure
+    return "", False
 
 
 async def parse_ai_response(

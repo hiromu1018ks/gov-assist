@@ -289,3 +289,58 @@ class TestValidateParsedData:
         }
         text, summary, corrections = validate_parsed_data(data)
         assert summary is None
+
+
+class TestFallbackExtract:
+    def test_regex_extracts_corrected_text_field(self):
+        text = '{"corrected_text": "校正済みテキストです", "summary": "3件修正"}'
+        extracted, success = _fallback_extract(text)
+        assert success is True
+        assert extracted == "校正済みテキストです"
+
+    def test_regex_extracts_with_whitespace_around_colon(self):
+        text = '{"corrected_text"  :  "校正済みテキスト"}'
+        extracted, success = _fallback_extract(text)
+        assert success is True
+        assert extracted == "校正済みテキスト"
+
+    def test_regex_extracts_multiline_value(self):
+        text = '{"corrected_text": "第1行\n第2行\n第3行"}'
+        extracted, success = _fallback_extract(text)
+        assert success is True
+        assert "第1行" in extracted
+        assert "第3行" in extracted
+
+    def test_no_corrected_text_finds_longest_string(self):
+        text = '{"other_field": "短い", "content": "これは長いテキストです。校正結果として抽出されるべき内容です。"}'
+        extracted, success = _fallback_extract(text)
+        assert success is True
+        assert "長いテキスト" in extracted
+
+    def test_no_strings_at_all_strips_json_syntax(self):
+        text = '{ "key": value, "arr": [1, 2, 3] }'
+        extracted, success = _fallback_extract(text)
+        assert success is True
+
+    def test_empty_string_returns_failure(self):
+        extracted, success = _fallback_extract("")
+        assert success is False
+        assert extracted == ""
+
+    def test_very_short_text_after_stripping_returns_failure(self):
+        extracted, success = _fallback_extract("abc")
+        assert success is False
+
+    def test_plain_text_without_json_structure(self):
+        text = "これはAIが返したテキストです。JSONではないですが内容があります。"
+        extracted, success = _fallback_extract(text)
+        assert success is True
+        assert len(extracted) > 0
+
+    def test_corrected_text_with_empty_value(self):
+        text = '{"corrected_text": "", "summary": "テスト"}'
+        extracted, success = _fallback_extract(text)
+        # Empty string from regex is still a match — but should it be?
+        # Yes: regex matched, even if value is empty
+        assert success is True
+        assert extracted == ""
