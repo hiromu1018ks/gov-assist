@@ -123,6 +123,19 @@ def _fallback_extract(text: str) -> tuple[str, bool]:
     return "", False
 
 
+def _log_parse_failure(request_id: str, model: str, attempt: int, raw_response: str) -> None:
+    """Log a JSON parse failure with SHA-256 hash of the response.
+
+    §9.2: JSON パース失敗時のログ記録
+    ログには生テキストではなく SHA-256 ハッシュを記録する
+    """
+    response_hash = hashlib.sha256(raw_response.encode()).hexdigest()
+    logger.warning(
+        "JSON parse failed: request_id=%s model=%s attempt=%d sha256=%s length=%d",
+        request_id, model, attempt, response_hash, len(raw_response),
+    )
+
+
 async def parse_ai_response(
     *,
     raw_response: str,
@@ -137,5 +150,88 @@ async def parse_ai_response(
     """Parse AI response with retry logic and fallback extraction.
 
     §4.4 ステップ1–4 + fallback
+
+    Retry strategy (max 3 attempts total):
+    - Attempt 1: Parse initial response
+    - Attempt 2 (on failure): Retry with same prompt
+    - Attempt 3 (on failure): Re-prompt with fixed text asking AI to fix JSON
+    - All failures: Fallback extraction (regex -> plain text -> error)
     """
-    raise NotImplementedError
+    last_response = raw_response
+
+    for attempt in range(3):
+        # Step 2: Preprocess
+        preprocessed = preprocess_response(last_response)
+
+        # Step 3: Parse JSON
+        try:
+            data = json.loads(preprocessed)
+        except json.JSONDecodeError:
+            _log_parse_failure(request_id, model, attempt + 1, last_response)
+
+            if attempt >= 2:
+                break
+
+            # Attempt retry via AI client
+            try:
+                if attempt == 0:
+                    # Retry with same prompt
+                    last_response = await ai_client.complete(
+                        model=model,
+                        system_prompt=system_prompt,
+                        user_prompt=user_prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        request_id=request_id,
+                    )
+                else:
+                    # Re-prompt with fixed text
+                    retry_prompt = RETRY_PROMPT_TEMPLATE.format(
+                        previous_response=last_response,
+                    )
+                    last_response = await ai_client.complete(
+                        model=model,
+                        system_prompt=system_prompt,
+                        user_prompt=retry_prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        request_id=request_id,
+                    )
+            except AIClientError:
+                # AI client error during retry — fall through to fallback
+                break
+            continue
+
+        # Step 4: Validate parsed data
+        corrected_text, summary, corrections = validate_parsed_data(data)
+        return ParseResult(
+            corrected_text=corrected_text,
+            summary=summary,
+            corrections=corrections,
+            status=ProofreadStatus.SUCCESS,
+            status_reason=None,
+        )
+
+    # Fallback extraction
+    logger.warning(
+        "Fallback extraction triggered: request_id=%s",
+        request_id,
+    )
+    extracted, success = _fallback_extract(last_response)
+
+    if success and extracted:
+        return ParseResult(
+            corrected_text=extracted,
+            summary=None,
+            corrections=[],
+            status=ProofreadStatus.PARTIAL,
+            status_reason=StatusReason.PARSE_FALLBACK,
+        )
+
+    return ParseResult(
+        corrected_text="",
+        summary=None,
+        corrections=[],
+        status=ProofreadStatus.ERROR,
+        status_reason=StatusReason.PARSE_FALLBACK,
+    )
