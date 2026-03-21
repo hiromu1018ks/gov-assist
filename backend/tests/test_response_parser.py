@@ -89,3 +89,203 @@ class TestPreprocessResponse:
         result = preprocess_response(text)
         assert '"corrected_text"' in result
         assert '"summary"' in result
+
+
+class TestValidateParsedData:
+    def test_valid_complete_data(self):
+        data = {
+            "corrected_text": "校正済みテキスト",
+            "summary": "3件の修正を行いました。",
+            "corrections": [
+                {
+                    "original": "修正前",
+                    "corrected": "修正後",
+                    "reason": "タイポ修正",
+                    "category": "誤字脱字",
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert text == "校正済みテキスト"
+        assert summary == "3件の修正を行いました。"
+        assert len(corrections) == 1
+        assert corrections[0].original == "修正前"
+        assert corrections[0].corrected == "修正後"
+        assert corrections[0].reason == "タイポ修正"
+        assert corrections[0].category == "誤字脱字"
+        assert corrections[0].diff_matched is False
+
+    def test_missing_summary_defaults_to_none(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert summary is None
+
+    def test_null_summary_defaults_to_none(self):
+        data = {
+            "corrected_text": "校正済み",
+            "summary": None,
+            "corrections": [],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert summary is None
+
+    def test_missing_corrections_defaults_to_empty_list(self):
+        data = {
+            "corrected_text": "校正済み",
+            "summary": "テスト",
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert corrections == []
+
+    def test_missing_corrected_text_defaults_to_empty_string(self):
+        data = {}
+        text, summary, corrections = validate_parsed_data(data)
+        assert text == ""
+
+    def test_correction_missing_required_field_is_dropped(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": "修正前",
+                    "corrected": "修正後",
+                    "reason": "理由",
+                    # "category" missing
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 0
+
+    def test_correction_with_non_string_field_is_dropped(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": 123,
+                    "corrected": "修正後",
+                    "reason": "理由",
+                    "category": "誤字脱字",
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 0
+
+    def test_correction_original_over_50_chars_is_dropped(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": "あ" * 51,
+                    "corrected": "修正後",
+                    "reason": "理由",
+                    "category": "誤字脱字",
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 0
+
+    def test_correction_corrected_over_50_chars_is_dropped(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": "修正前",
+                    "corrected": "い" * 51,
+                    "reason": "理由",
+                    "category": "誤字脱字",
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 0
+
+    def test_correction_exactly_50_chars_is_accepted(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": "あ" * 50,
+                    "corrected": "い" * 50,
+                    "reason": "理由",
+                    "category": "誤字脱字",
+                }
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 1
+
+    def test_mix_of_valid_and_invalid_corrections(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {
+                    "original": "修正前1",
+                    "corrected": "修正後1",
+                    "reason": "理由1",
+                    "category": "誤字脱字",
+                },
+                {
+                    "original": "修正前2",
+                    # "corrected" missing
+                    "reason": "理由2",
+                    "category": "敬語",
+                },
+                {
+                    "original": "修正前3",
+                    "corrected": "修正後3",
+                    "reason": "理由3",
+                    "category": "用語",
+                },
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 2
+        assert corrections[0].original == "修正前1"
+        assert corrections[1].original == "修正前3"
+
+    def test_all_corrections_invalid_returns_empty_list(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                {"original": "x" * 51, "corrected": "y", "reason": "r", "category": "c"},
+                {"not_valid": True},
+                42,
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert corrections == []
+
+    def test_corrections_field_not_list_returns_empty_list(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": "not a list",
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert corrections == []
+
+    def test_non_dict_items_in_corrections_list_are_skipped(self):
+        data = {
+            "corrected_text": "校正済み",
+            "corrections": [
+                "string item",
+                42,
+                None,
+                {"original": "OK", "corrected": "OK", "reason": "OK", "category": "OK"},
+            ],
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert len(corrections) == 1
+
+    def test_summary_non_string_defaults_to_none(self):
+        data = {
+            "corrected_text": "校正済み",
+            "summary": 123,
+        }
+        text, summary, corrections = validate_parsed_data(data)
+        assert summary is None

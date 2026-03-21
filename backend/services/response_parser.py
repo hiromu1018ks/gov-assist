@@ -46,8 +46,51 @@ def validate_parsed_data(data: dict) -> tuple[str, str | None, list[CorrectionIt
     """Validate parsed JSON data with tolerant correction handling.
 
     §4.4 ステップ4: Pydantic スキーマバリデーション
+
+    - Missing summary → None
+    - Missing corrections → []
+    - Individual invalid corrections → dropped (not the whole response)
+    - All corrections invalid → []
     """
-    raise NotImplementedError
+    corrected_text = str(data.get("corrected_text", ""))
+    summary = data.get("summary") if isinstance(data.get("summary"), str) else None
+
+    raw_corrections = data.get("corrections", [])
+    if not isinstance(raw_corrections, list):
+        corrections = []
+    else:
+        corrections = _validate_corrections(raw_corrections)
+
+    return corrected_text, summary, corrections
+
+
+def _validate_corrections(raw_corrections: list) -> list[CorrectionItem]:
+    """Validate individual correction entries, dropping invalid ones."""
+    corrections = []
+    for item in raw_corrections:
+        if not isinstance(item, dict):
+            continue
+        try:
+            original = item["original"]
+            corrected = item["corrected"]
+            reason = item["reason"]
+            category = item["category"]
+        except (KeyError, TypeError):
+            continue
+
+        if not all(isinstance(v, str) for v in (original, corrected, reason, category)):
+            continue
+        if len(original) > 50 or len(corrected) > 50:
+            continue
+
+        corrections.append(CorrectionItem(
+            original=original,
+            corrected=corrected,
+            reason=reason,
+            category=category,
+            diff_matched=False,
+        ))
+    return corrections
 
 
 def _fallback_extract(text: str) -> tuple[str, bool]:
