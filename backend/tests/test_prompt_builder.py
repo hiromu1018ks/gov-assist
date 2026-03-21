@@ -200,3 +200,53 @@ class TestBuildUserPrompt:
             text="第1行\n第2行\n第3行",
         )
         assert "第1行\n第2行\n第3行" in prompt
+
+
+class TestBuildPrompts:
+    def test_returns_system_and_user_prompts(self):
+        request = ProofreadRequest(
+            request_id="test-123",
+            text="テスト文書",
+            document_type=DocumentType.OFFICIAL,
+        )
+        system, user = build_prompts(request)
+        assert isinstance(system, str)
+        assert isinstance(user, str)
+        assert len(system) > 0
+        assert len(user) > 0
+
+    def test_system_prompt_matches_constant(self):
+        request = ProofreadRequest(
+            request_id="test-123",
+            text="テスト",
+            document_type=DocumentType.EMAIL,
+        )
+        system, _ = build_prompts(request)
+        assert system == SYSTEM_PROMPT
+
+    def test_user_prompt_matches_build_user_prompt(self):
+        request = ProofreadRequest(
+            request_id="test-123",
+            text="テスト文書",
+            document_type=DocumentType.REPORT,
+            options=ProofreadOptions(typo=True, legal=True),
+        )
+        _, user = build_prompts(request)
+        expected = build_user_prompt(
+            document_type=DocumentType.REPORT,
+            options=ProofreadOptions(typo=True, legal=True),
+            text="テスト文書",
+        )
+        assert user == expected
+
+    def test_uses_request_defaults(self):
+        """ProofreadRequest のデフォルトオプションが正しく渡されること"""
+        request = ProofreadRequest(
+            request_id="test-123",
+            text="テスト",
+            document_type=DocumentType.OTHER,
+        )
+        _, user = build_prompts(request)
+        # デフォルトでは typo=True, legal=False
+        assert "誤字・脱字" in user
+        assert "法令・条例" not in user

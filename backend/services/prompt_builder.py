@@ -48,7 +48,7 @@ def build_user_prompt(
 
     # 有効な校正オプションの表示名を取得
     active_labels = [
-        OPTION_LABELS[field]
+        label
         for field, label in OPTION_LABELS.items()
         if getattr(options, field, False)
     ]
@@ -77,4 +77,9 @@ def build_user_prompt(
 
 def build_prompts(request: ProofreadRequest) -> tuple[str, str]:
     """Build both system and user prompts from a ProofreadRequest."""
-    raise NotImplementedError
+    user_prompt = build_user_prompt(
+        document_type=request.document_type,
+        options=request.options,
+        text=request.text,
+    )
+    return SYSTEM_PROMPT, user_prompt
