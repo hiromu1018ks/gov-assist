@@ -842,3 +842,88 @@ govassist/
 | v1.6.0 | 2026/03/21 | 第5回レビュー指摘を全件反映。フロントの reduce 的逐次レンダリング方針を設計方針・処理フロー・diff 仕様に追加、PDF/docx ファイル抽出後の必須プレビュー＋手動編集欄を追加、diff 短小ブロック圧縮の副作用（細かい修正が消える可能性）と圧縮前ログ保存を明記、近傍マッチ 4 文字未満の扱いを補足（③タブのみ表示）、大幅書き換え検知（変更率 30% 超）と warnings フィールドを追加、status_reason フィールドを追加（diff_timeout / parse_fallback）・UI 分岐テーブルを詳細化、FTS5 トークナイザを unicode61 から ngram に変更し LIKE fallback を併用、起動時 localhost 限定警告モーダルを追加、Origin チェックをサーバー側に追加、ログに大幅書き換え検知・diff 圧縮（INFO）イベントを追加 |
 | v1.7.0 | 2026/03/21 | 第6回レビュー指摘を全件反映。diff 短小ブロック吸収の閾値を 3 文字未満 → 2 文字未満に緩和（助詞＋動詞修正が消えるリスク軽減）、diffs の順序正規化をバックエンド責務として明文化（equal を挟んだ delete/insert の並べ替えを明示）、`start` をデバッグ用途に限定しフロントレンダリングは順序のみ依存に変更、corrections の全エントリが壊れている場合の全削除 OK ポリシーを明文化、large_rewrite の変更率計算を delete+insert のみに変更（equal 除外・改行整理等の誤検知防止）、localStorage にスキーマバージョン（`version: 1`）を追加しマイグレーション設計を整備 |
 | v1.8.0 | 2026/03/21 | 第7回レビュー指摘を全件反映。diff 正規化アルゴリズムを4ルールで明文化（equal 跨ぎ禁止を最重要ルールとして明示）、corrections マッチの競合解決ルールを追加（1 diff に reason 最大1件・消費型）、JSON 再プロンプトの内容を固定（前回レスポンスを貼付して再フォーマット依頼）、diff タイムアウト時に行単位 diff へのフォールバックを追加（全失敗時のみ③タブ表示）、large_rewrite 判定を「最大連続変更ブロック長 ÷ 全体長」との AND 条件に変更（誤検知防止）、`enable_diff_compaction` フラグを MVP から実装、PDF 抽出品質を「保証しない・ユーザー編集前提」と明記、localStorage マイグレーションをリセット優先から移行優先に変更、Origin チェックを「誤操作防止」と明確化、`dangerouslySetInnerHTML` 禁止を XSS 対策として追記、FTS5 ngram のビルド要件確認コマンドと環境依存注意を追加 |
+
+---
+
+## 13. 実装タスクリスト（MVP）
+
+MVP 実装を Claude Code のセッション単位で進めるためのタスクリスト。各タスクは 1 セッション（2〜4 ファイル程度の作成・変更）に収まる粒度としている。
+
+### Phase 1: バックエンド基盤（Task 1–3）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 1 | バックエンドプロジェクトのセットアップ | §2.2, §9, §11 | なし | `backend/requirements.txt`, `backend/main.py`, `backend/schemas.py`, `backend/.env.example`, `backend/logs/` | FastAPI app 雛形・Pydantic スキーマ定義（ProofreadRequest/Response 等）・`.env` テンプレート・logging 設定（RotatingFileHandler） |
+| 2 | データベースセットアップ | §7, §11 | 1 | `backend/database.py`, `backend/models.py`, `backend/migrations/` | SQLAlchemy エンジン・セッション設定、History テーブルモデル（truncated フラグ含む）、Alembic 初期化＋初回マイグレーション、SQLite FTS5 ngram トークナイザ動作確認 |
+| 3 | 認証ミドルウェア & CORS | §8.2, §8.3 | 1 | `backend/main.py` | Bearer token 認証デペンデンシー追加、CORS ミドルウェア追加（`CORS_ORIGINS` 環境変数対応）、Origin チェックロジック |
+
+### Phase 2: バックエンド AI サービス（Task 4–7）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 4 | AI クライアントサービス | §4.1 | 1 | `backend/services/ai_client.py` | さくらの AI Engine API 呼び出し（OpenAI 互換 REST API）、タイムアウト 60 秒、エラーハンドリング（rate limit / timeout / API error） |
+| 5 | プロンプトビルダー | §4.3 | 1 | `backend/services/prompt_builder.py` | システムプロンプト（固定）＋ユーザープロンプト（動的生成）、文書種別・校正オプションに応じたプロンプト構築 |
+| 6 | レスポンスパーサー | §4.4 ステップ1–4, §9.2 | 4 | `backend/services/response_parser.py` | JSON パース（コードブロック除去 → パース → Pydantic バリデーション）、リトライロジック（最大3回）＋再プロンプト（固定文言）、fallback 抽出（regex → 平文 → error） |
+| 7 | Diff サービス | §4.4 ステップ5–11, §4.5 | 1 | `backend/services/diff_service.py` | diff-match-patch で差分計算（タイムアウト 5 秒 → 行単位 diff フォールバック）、後処理①連続同種ブロックマージ、後処理②短小ブロック吸収（`enable_diff_compaction` フラグ対応）、順序正規化（4ルール）、corrections 近傍マッチ（動的幅・4文字未満ガード・消費型）、大幅書き換え検知 |
+
+### Phase 3: バックエンド API ルート（Task 8–11）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 8 | Models & Settings ルート | §4.2, §5.1 | 2, 3 | `backend/routers/models_router.py`, `backend/routers/settings.py`, `backend/main.py` | GET /api/models（モデル設定テーブル参照）、GET/PUT /api/settings（サーバー設定 CRUD） |
+| 9 | Proofread ルート | §4.4, §5.2, §5.5 | 4, 5, 6, 7, 8 | `backend/routers/proofread.py`, `backend/main.py` | POST /api/proofread：AI client → prompt builder → response parser → diff service の統合、入力文字数チェック、X-Request-ID 処理、エラーレスポンス生成 |
+| 10 | History ルート | §5.4, §7, §8.2 | 2, 3 | `backend/routers/history.py`, `backend/main.py` | CRUD + 検索（FTS5 ngram 全文検索＋LIKE フォールバック）、保存件数上限・総容量上限（20MB）の自動削除、truncated フラグ対応 |
+| 11 | DOCX Export ルート | §5.3, §6.2 | 3 | `backend/routers/export.py`, `backend/services/docx_exporter.py`, `backend/main.py` | POST /api/export/docx：python-docx でプレーンテキストベースの .docx 生成（段落区切り・箇条書き検出） |
+
+### Phase 4: フロントエンド基盤（Task 12–14）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 12 | フロントエンドプロジェクトセットアップ & CSS | §2.2, §3.1 | なし | `frontend/`（Vite + React 18 プロジェクト）, `css/base.css`, `css/layout.css`, `css/components.css` | Vite プロジェクト作成、素の CSS によるリセット・基本スタイル・レイアウト定義 |
+| 13 | App Shell（レイアウト・ルーティング） | §2.3, §3.1, §3.2 | 12 | `App.jsx`, `components/SideMenu.jsx`, `components/Header.jsx` | 全体レイアウト（サイドメニュー＋メインエリア）、ツール一覧・ページ切替、モデル切替セレクタ、React Router ルーティング |
+| 14 | API クライアント & 認証フロー | §5, §8.2, §8.4 | 12 | API 通信ユーティリティモジュール, 認証関連コンポーネント | fetch ラッパー（X-Request-ID 付与・Authorization header）、localStorage によるトークン保存・読み込み、起動時 localhost 限定警告モーダル、ログイン画面（トークン入力）— 認証エラー時のリダイレクト |
+
+### Phase 5: フロントエンド AI 文書校正ツール（Task 15–19）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 15 | 入力エリア | §3.3.1, §3.3.2, §6.1, §8.4 | 14 | `tools/proofreading/InputArea.jsx`, mammoth.js / pdf.js 依存追加 | テキストエリア（最低10行表示）、ファイルアップロード（.docx/.pdf）＋ドラッグ＆ドロップ、mammoth.js / pdf.js によるテキスト抽出、抽出結果プレビュー（ユーザー確認後に送信）、文書種別セレクタ、文字数カウンター（8,000文字上限・超過時ボタン無効化）、セキュリティ警告表示 |
+| 16 | テキスト前処理 & 校正オプション | §3.3.2, §3.3.3 | 14 | `tools/proofreading/preprocess.js`, `tools/proofreading/OptionPanel.jsx` | 前処理ルール実装（改行正規化・空白トリム・ページ区切り除去・NULL文字除去）、校正オプションチェックボックス（6項目） |
+| 17 | 結果表示 — フレームワーク & タブ③ コメント一覧 | §3.3.4, §4.6 | 14 | `tools/proofreading/ResultView.jsx` | 3タブ構成のフレームワーク、タブ③ コメント一覧表示、`diff_matched: false` の「参考（AI推定）」ラベル表示、status による UI 分岐（success/partial/error）、large_rewrite 警告表示 |
+| 18 | 結果表示 — タブ① ハイライト & タブ② 比較 | §3.3.4, §4.5 | 17 | `tools/proofreading/DiffView.jsx` | タブ① ハイライト表示（reduce 的逐次レンダリング・順序のみ依存）、タブ② 比較表示（左右並列・スクロール同期）、ツールチップ（reason ポップアップ）、「表示は差分ベース／コメントはAI推定」の常時表示 |
+| 19 | アクションボタン & ステータス管理 | §3.3.5, §3.3.6 | 15, 16, 17, 18 | `tools/proofreading/Proofreading.jsx`, 各子コンポーネント | 校正実行ボタン（処理中無効化＋スピナー）、クリアボタン、校正済みテキストのコピー（Clipboard API）、Word ダウンロード（POST /api/export/docx → バイナリDL）、履歴に保存ボタン、処理中状態の UI（スピナー・タイムアウト・再試行ボタン）、エラーメッセージ表示 |
+
+### Phase 6: フロントエンド他ツール（Task 20–21）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 20 | 履歴パネル | §7, §5.4 | 14 | `tools/history/History.jsx` | 履歴一覧表示（日時降順・文書種別・先頭50文字プレビュー）、キーワード検索・日付フィルタ・文書種別フィルタ、履歴クリックで結果復元・再表示、メモ追記・個別削除・全件削除、truncated レコードの警告表示 |
+| 21 | 設定パネル | §3.4 | 14 | `tools/settings/Settings.jsx` | モデル選択（GET /api/models から動的生成）、デフォルト文書種別・校正オプションの初期値設定、localStorage への保存（`version: 1` スキーマ）、localStorage マイグレーション対応、履歴保存件数上限の設定（PUT /api/settings） |
+
+### Phase 7: 統合（Task 22）
+
+| タスク | 名称 | 対応設計書セクション | 前提タスク | 作成・変更ファイル | 内容 |
+|--------|------|-------------------|-----------|-------------------|------|
+| 22 | エンドツーエンド統合テスト & 仕上げ | 全セクション | 9–21 | 既存ファイルの修正 | フロントエンド ↔ バックエンド通信の動作確認、エラーケースの動作確認（文字数超過・AI タイムアウト・JSON パース失敗等）、各 status（success/partial/error）の UI 表示確認、diff 表示の精度確認（日本語テキストでの動作確認）、ログ出力の確認 |
+
+### 依存関係図
+
+```
+Phase 1:  [Task 1] ─→ [Task 2] ─→ [Task 3]
+Phase 2:  [Task 1] ─→ [Task 4] ─→ [Task 6]
+           [Task 1] ─→ [Task 5]
+           [Task 1] ─→ [Task 7]
+Phase 3:  [Task 2]+[Task 3] ─→ [Task 8] ─→ [Task 9]
+           [Task 2]+[Task 3] ─→ [Task 10]
+           [Task 3] ─→ [Task 11]
+Phase 4:  [Task 12] ─→ [Task 13] ─→ [Task 14]
+Phase 5:  [Task 14] ─→ [Task 15]
+           [Task 14] ─→ [Task 16]
+           [Task 14] ─→ [Task 17] ─→ [Task 18]
+           [Task 15]+[Task 16]+[Task 17]+[Task 18] ─→ [Task 19]
+Phase 6:  [Task 14] ─→ [Task 20]
+           [Task 14] ─→ [Task 21]
+Phase 7:  [Task 9]〜[Task 21] 全完了 ─→ [Task 22]
+```
+
+> **並列実行の可能性**：Phase 4（Task 12–14）は Phase 1–3 と独立して並列に進められる。Phase 5 内では Task 15・16・17 を並列に開始できる。Phase 6 の Task 20・21 も Task 14 完了後なら並列に進められる。
