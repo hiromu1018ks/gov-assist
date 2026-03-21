@@ -20,6 +20,7 @@ def db_session(db_engine):
     ロールバックされ、テスト間のデータ汚染を防ぐ。
     """
     from database import Base
+    import models  # noqa: F401 — register ORM models with Base.metadata
     Base.metadata.create_all(db_engine)
     connection = db_engine.connect()
     transaction = connection.begin()
