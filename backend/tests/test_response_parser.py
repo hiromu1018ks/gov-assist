@@ -344,3 +344,18 @@ class TestFallbackExtract:
         # Yes: regex matched, even if value is empty
         assert success is True
         assert extracted == ""
+
+
+class TestRetryPrompt:
+    def test_contains_fixed_instruction(self):
+        assert "JSONとして解析できませんでした" in RETRY_PROMPT_TEMPLATE
+
+    def test_instructs_no_code_blocks(self):
+        assert "コードブロック記法は一切含めない" in RETRY_PROMPT_TEMPLATE
+
+    def test_has_placeholder_for_previous_response(self):
+        assert "{previous_response}" in RETRY_PROMPT_TEMPLATE
+
+    def test_format_with_previous_response(self):
+        result = RETRY_PROMPT_TEMPLATE.format(previous_response="broken json")
+        assert "broken json" in result
