@@ -7,6 +7,7 @@ import hmac
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 
 from database import init_db, check_fts5_ngram_support
 
@@ -93,6 +94,49 @@ async def verify_token(request: Request, app_token: str = Depends(get_app_token)
     return token
 
 
+class OriginCheckMiddleware:
+    """Pure ASGI middleware: reject requests from non-allowed origins.
+
+    This is NOT a security measure (§8.2). It prevents accidental cross-origin
+    requests (誤操作防止). Requests without an Origin header (curl, direct
+    API calls) are allowed through.
+
+    Uses pure ASGI instead of BaseHTTPMiddleware to avoid known issues with
+    CORS header propagation.
+    """
+
+    # Paths exempt from origin checking (developer tools)
+    SKIP_PATHS = {"/docs", "/openapi.json", "/redoc"}
+
+    def __init__(self, app, allowed_origins: list[str] | None = None):
+        self.app = app
+        self.allowed_origins = set(allowed_origins or get_cors_origins())
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope["path"].split("?")[0]  # Strip query string
+            if path not in self.SKIP_PATHS:
+                # Extract Origin header from ASGI scope
+                origin = None
+                for name, value in scope.get("headers", []):
+                    if name == b"origin":
+                        origin = value.decode("utf-8")
+                        break
+
+                if origin and origin not in self.allowed_origins:
+                    response = JSONResponse(
+                        status_code=403,
+                        content={
+                            "error": "forbidden",
+                            "message": "許可されていないオリジンです",
+                        },
+                    )
+                    await response(scope, receive, send)
+                    return
+
+        await self.app(scope, receive, send)
+
+
 def create_app(enable_origin_check: bool = True) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -113,6 +157,10 @@ def create_app(enable_origin_check: bool = True) -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "DELETE", "PUT"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     )
+
+    # Origin check (outer — runs first, before CORS)
+    if enable_origin_check:
+        application.add_middleware(OriginCheckMiddleware)
 
     @application.get("/api/health")
     def health():
