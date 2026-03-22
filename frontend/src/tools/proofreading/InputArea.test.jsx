@@ -134,4 +134,138 @@ describe('InputArea', () => {
     renderInputArea({ isSubmitting: true });
     expect(screen.getByRole('button', { name: '校正実行' })).toBeDisabled();
   });
+
+  // --- File Upload and Drag-and-Drop tests ---
+
+  it('clicking file button triggers hidden file input', async () => {
+    const user = userEvent.setup();
+    renderInputArea();
+
+    const fileButton = screen.getByRole('button', { name: 'ファイルを選択' });
+    await user.click(fileButton);
+
+    const fileInput = document.querySelector('input[type="file"]');
+    expect(fileInput).toBeInTheDocument();
+  });
+
+  it('shows spinner and replaces text after successful file extraction', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({ text: 'extracted content from file', error: null });
+
+    const user = userEvent.setup();
+    renderInputArea();
+
+    // Set some initial text
+    await user.type(screen.getByLabelText('校正テキスト入力'), 'original text');
+
+    // Trigger file input change
+    const fileInput = document.querySelector('input[type="file"]');
+    const file = new File(['binary'], 'test.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    await user.upload(fileInput, file);
+
+    // Should show extracted text
+    await screen.findByDisplayValue('extracted content from file');
+    expect(screen.getByText(/test.docx/)).toBeInTheDocument();
+  });
+
+  it('shows extraction source banner with filename after extraction', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({ text: 'content', error: null });
+
+    const user = userEvent.setup();
+    renderInputArea();
+
+    const fileInput = document.querySelector('input[type="file"]');
+    const file = new File(['binary'], 'report.pdf', { type: 'application/pdf' });
+    await user.upload(fileInput, file);
+
+    await screen.findByText(/report.pdf/);
+    expect(screen.getByText(/テキストを抽出しました/)).toBeInTheDocument();
+  });
+
+  it('restores previous text when cancel button is clicked', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({ text: 'new content', error: null });
+
+    const user = userEvent.setup();
+    renderInputArea();
+
+    // Set initial text
+    await user.type(screen.getByLabelText('校正テキスト入力'), 'original text');
+
+    // Upload file
+    const fileInput = document.querySelector('input[type="file"]');
+    await user.upload(fileInput, new File(['binary'], 'test.docx'));
+
+    await screen.findByDisplayValue('new content');
+
+    // Click cancel
+    await user.click(screen.getByRole('button', { name: '元に戻す' }));
+
+    expect(screen.getByLabelText('校正テキスト入力')).toHaveValue('original text');
+    expect(screen.queryByText(/test.docx/)).not.toBeInTheDocument();
+  });
+
+  it('shows error message on extraction failure', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({
+      text: '',
+      error: 'テキストを抽出できませんでした。',
+    });
+
+    const user = userEvent.setup();
+    renderInputArea();
+
+    const fileInput = document.querySelector('input[type="file"]');
+    await user.upload(fileInput, new File(['binary'], 'image.pdf'));
+
+    await screen.findByText('テキストを抽出できませんでした。');
+  });
+
+  it('clears extraction banner when user types after extraction', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({ text: 'extracted', error: null });
+
+    const user = userEvent.setup();
+    renderInputArea();
+
+    const fileInput = document.querySelector('input[type="file"]');
+    await user.upload(fileInput, new File(['binary'], 'test.docx'));
+
+    await screen.findByText(/test.docx/);
+
+    // User types in textarea — banner should disappear
+    await user.type(screen.getByLabelText('校正テキスト入力'), ' edit');
+
+    expect(screen.queryByText(/test.docx/)).not.toBeInTheDocument();
+  });
+
+  it('applies drop-zone--active class when dragging files over textarea', () => {
+    renderInputArea();
+    const wrapper = document.querySelector('.input-area__textarea-wrapper');
+
+    fireEvent.dragEnter(wrapper, {
+      dataTransfer: { types: ['Files'] },
+    });
+
+    expect(wrapper.classList.contains('drop-zone--active')).toBe(true);
+  });
+
+  it('handles file drop and extracts text', async () => {
+    const { extractText } = await import('./fileExtractor');
+    vi.mocked(extractText).mockResolvedValue({ text: 'dropped content', error: null });
+
+    renderInputArea();
+    const wrapper = document.querySelector('.input-area__textarea-wrapper');
+
+    const file = new File(['binary'], 'dropped.pdf');
+    fireEvent.drop(wrapper, {
+      dataTransfer: { files: [file], types: ['Files'] },
+    });
+
+    expect(extractText).toHaveBeenCalledWith(file);
+    await screen.findByDisplayValue('dropped content');
+  });
 });
