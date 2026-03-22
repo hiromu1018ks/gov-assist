@@ -238,11 +238,48 @@ def _absorb_short_blocks(blocks: list[dict]) -> list[dict]:
     return result
 
 
-def _normalize_order(
-    diffs: list[tuple[int, str]],
-) -> list[tuple[int, str]]:
-    """Normalize operation order: EQUAL before DELETE/INSERT (Task 4)."""
-    raise NotImplementedError("_normalize_order will be implemented in a later task")
+def _normalize_order(blocks: list[dict]) -> list[dict]:
+    """Normalize diff block order.
+
+    §4.4 ステップ8: 4つのルールを適用
+    ルール1: 連続する delete ブロック群をひとつにまとめる
+    ルール2: delete → insert の順で並べる
+    ルール3: equal を跨ぐ場合は別の変更ブロックとして扱う（equal 跨ぎ結合禁止）
+    ルール4: 同一 start の insert は配列の出現順を固定する
+
+    Algorithm: Walk through blocks. When a change group is found
+    (consecutive non-equal blocks), output deletes first (merged),
+    then inserts in original order. Equal blocks act as separators.
+    """
+    result: list[dict] = []
+    i = 0
+    while i < len(blocks):
+        if blocks[i]["type"] == DiffType.EQUAL:
+            result.append(dict(blocks[i]))
+            i += 1
+            continue
+
+        # Collect change group: all consecutive non-equal blocks
+        group: list[dict] = []
+        while i < len(blocks) and blocks[i]["type"] != DiffType.EQUAL:
+            group.append(blocks[i])
+            i += 1
+
+        # Separate deletes and inserts
+        deletes = [b for b in group if b["type"] == DiffType.DELETE]
+        inserts = [b for b in group if b["type"] == DiffType.INSERT]
+
+        # Rule 1: Merge consecutive deletes into one block
+        if deletes:
+            result.append({
+                "type": DiffType.DELETE,
+                "text": "".join(d["text"] for d in deletes),
+            })
+
+        # Rules 2 & 4: Inserts in original array order (not merged)
+        result.extend([dict(ins) for ins in inserts])
+
+    return result
 
 
 def _calculate_starts(

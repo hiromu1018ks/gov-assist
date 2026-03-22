@@ -273,3 +273,112 @@ class TestAbsorbShortBlocks:
         result = _absorb_short_blocks(blocks)
         assert len(result) == 2
         assert result[0]["text"] == "abcの。"
+
+
+class TestNormalizeOrder:
+    """§4.4 ステップ8: diffs の適用順序の正規化（4ルール）"""
+
+    @staticmethod
+    def _b(type_str: str, text: str) -> dict:
+        type_map = {
+            "equal": DiffType.EQUAL,
+            "delete": DiffType.DELETE,
+            "insert": DiffType.INSERT,
+        }
+        return {"type": type_map[type_str], "text": text}
+
+    def test_insert_before_delete_swapped(self):
+        """INSERT then DELETE → reordered to DELETE then INSERT (ルール2)."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("insert", "X"),
+            self._b("delete", "B"),
+            self._b("equal", "C"),
+        ]
+        result = _normalize_order(blocks)
+        assert result[1]["type"] == DiffType.DELETE
+        assert result[2]["type"] == DiffType.INSERT
+
+    def test_delete_before_insert_unchanged(self):
+        """DELETE then INSERT → no change needed."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("delete", "B"),
+            self._b("insert", "X"),
+            self._b("equal", "C"),
+        ]
+        result = _normalize_order(blocks)
+        assert result[1]["type"] == DiffType.DELETE
+        assert result[2]["type"] == DiffType.INSERT
+
+    def test_equal_crossing_prohibited(self):
+        """[DELETE][EQUAL>=2][INSERT] → NOT merged (ルール3: equal跨ぎ禁止)."""
+        blocks = [
+            self._b("delete", "A"),
+            self._b("equal", "BC"),
+            self._b("insert", "X"),
+        ]
+        result = _normalize_order(blocks)
+        assert len(result) == 3
+        assert result[0]["type"] == DiffType.DELETE
+        assert result[1]["type"] == DiffType.EQUAL
+        assert result[2]["type"] == DiffType.INSERT
+
+    def test_consecutive_deletes_merged(self):
+        """Step 7 may create consecutive deletes; normalize merges them (ルール1)."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("delete", "B"),
+            self._b("delete", "C"),
+            self._b("insert", "X"),
+            self._b("equal", "D"),
+        ]
+        result = _normalize_order(blocks)
+        delete_blocks = [b for b in result if b["type"] == DiffType.DELETE]
+        assert len(delete_blocks) == 1
+        assert delete_blocks[0]["text"] == "BC"
+
+    def test_multiple_inserts_keep_order(self):
+        """Multiple inserts at same position → maintain array order (ルール4)."""
+        blocks = [
+            self._b("delete", "A"),
+            self._b("insert", "X"),
+            self._b("insert", "Y"),
+            self._b("equal", "B"),
+        ]
+        result = _normalize_order(blocks)
+        inserts = [b for b in result if b["type"] == DiffType.INSERT]
+        assert len(inserts) == 2
+        assert inserts[0]["text"] == "X"
+        assert inserts[1]["text"] == "Y"
+
+    def test_standalone_insert_unchanged(self):
+        """INSERT between equals (no adjacent DELETE) → unchanged."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("insert", "X"),
+            self._b("equal", "B"),
+        ]
+        result = _normalize_order(blocks)
+        assert result[1]["type"] == DiffType.INSERT
+        assert len(result) == 3
+
+    def test_standalone_delete_unchanged(self):
+        """DELETE between equals (no adjacent INSERT) → unchanged."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("delete", "B"),
+            self._b("equal", "C"),
+        ]
+        result = _normalize_order(blocks)
+        assert result[1]["type"] == DiffType.DELETE
+        assert len(result) == 3
+
+    def test_empty_input(self):
+        assert _normalize_order([]) == []
+
+    def test_only_equals(self):
+        blocks = [self._b("equal", "A"), self._b("equal", "B")]
+        result = _normalize_order(blocks)
+        assert len(result) == 2
+        assert all(b["type"] == DiffType.EQUAL for b in result)
