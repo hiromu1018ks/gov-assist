@@ -7,11 +7,14 @@ import App from './App';
 import './css/base.css';
 import './css/layout.css';
 import './css/components.css';
+import './css/animations.css';
+import ScanlineOverlay from './effects/ScanlineOverlay';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <ScanlineOverlay />
         <App />
       </AuthProvider>
     </BrowserRouter>

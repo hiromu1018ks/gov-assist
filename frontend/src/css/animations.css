@@ -1,0 +1,80 @@
+/* ============================================
+   animations.css — @keyframes & motion overrides
+   ============================================ */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.85; }
+  97% { opacity: 1; }
+  98% { opacity: 0.9; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 65, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 255, 65, 0.5); }
+}
+
+@keyframes text-glow-pulse {
+  0%, 100% { text-shadow: 0 0 6px rgba(0, 255, 65, 0.3); }
+  50% { text-shadow: 0 0 12px rgba(0, 255, 65, 0.6); }
+}
+
+@keyframes access-flash {
+  0% { background-color: #00ff41; color: #000; text-shadow: none; }
+  100% { background-color: transparent; color: #00ff41; text-shadow: 0 0 12px #00ff41; }
+}
+
+@keyframes glitch {
+  0%, 90%, 100% { transform: translateX(0); }
+  92% { transform: translateX(-2px); }
+  94% { transform: translateX(2px); }
+  96% { transform: translateX(-1px); }
+  98% { transform: translateX(1px); }
+}
+
+@keyframes typewriter-cursor {
+  0%, 50% { border-right-color: #00ff41; }
+  51%, 100% { border-right-color: transparent; }
+}
+
+@keyframes blink-indicator {
+  0%, 40%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes scanline-scroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+/* --- prefers-reduced-motion: disable all animations and glow --- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .scanline-overlay {
+    display: none !important;
+  }
+
+  .status-bar__left,
+  .status-bar__prompt,
+  .sidebar__item--active,
+  .modal__title,
+  .settings__section-title,
+  .history-detail__section h3,
+  .tab--active {
+    text-shadow: none !important;
+  }
+}
