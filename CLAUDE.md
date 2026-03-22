@@ -25,7 +25,7 @@ GovAssist is a personal-use web application for Japanese local government cleric
 
 ```
 backend/
-├── main.py                  # App factory (create_app()), auth dependency, CORS, OriginCheckMiddleware, logging
+├── main.py                  # App factory (create_app()), auth dependency (disabled for MVP), CORS, OriginCheckMiddleware, logging
 ├── database.py              # SQLAlchemy engine/session, init_db(), FTS5 ngram detection
 ├── models.py                # ORM models (History)
 ├── schemas.py               # Pydantic request/response models, enums
@@ -67,13 +67,13 @@ Tests use in-memory SQLite with savepoint isolation via `conftest.py` fixtures (
 | POST | `/api/export/docx` | Generate .docx from corrected text |
 | GET/PUT | `/api/settings` | Server-side settings |
 
-Auth: `Authorization: Bearer {token}` (simple fixed token from `.env`, timing-safe comparison via `hmac.compare_digest`).
+Auth: **Disabled for localhost MVP.** Code preserved in comments. See `docs/superpowers/specs/2026-03-22-auth-removal-design.md` for re-enablement.
 
 ## Key Backend Patterns
 
 - **`create_app()` factory**: All middleware and routes registered here. `main.py` calls `init_db()` and `setup_logging()` at module level.
 - **`OriginCheckMiddleware`**: Pure ASGI middleware (not `BaseHTTPMiddleware`) — rejects non-allowed origins with 403. Skips `/docs`, `/openapi.json`, `/redoc`. Requests without `Origin` header are allowed.
-- **Auth dependency `verify_token()`**: Returns 401 for invalid/missing tokens, 500 if `APP_TOKEN` is not configured. Health endpoint is unprotected.
+- **Auth dependency `verify_token()`**: **Currently disabled (commented out) for localhost MVP.** Returns 401 for invalid/missing tokens, 500 if `APP_TOKEN` is not configured. Health endpoint is unprotected.
 - **Database URL**: Read from `DATABASE_URL` env var, defaults to `backend/data/govassist.db`.
 - **Pydantic schemas**: `DocumentType` enum (email/report/official/other), `ProofreadStatus` (success/partial/error), `DiffType` (equal/insert/delete). Request text limited to 1-8000 chars.
 
@@ -93,7 +93,7 @@ These are non-negotiable architectural rules from the design spec:
 Backend `.env` (see `.env.example`):
 - `CORS_ORIGINS` — comma-separated, default `http://localhost:5173`
 - `AI_ENGINE_API_KEY` — SAKURA AI Engine API key
-- `APP_TOKEN` — simple auth token for API access
+- `APP_TOKEN` — simple auth token for API access (currently disabled, commented out in `.env.example`)
 - `DATABASE_URL` — optional override (default: `sqlite:///data/govassist.db`)
 
 ## Key Limits
