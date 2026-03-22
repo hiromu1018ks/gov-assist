@@ -20,6 +20,7 @@ vi.mock('../proofreading/ResultView', () => ({
 import { apiGet, apiPatch, apiDelete } from '../../api/client';
 import HistoryList from './HistoryList';
 import HistoryDetail from './HistoryDetail';
+import History from './History';
 
 const mockApiGet = vi.mocked(apiGet);
 const mockApiPatch = vi.mocked(apiPatch);
@@ -449,5 +450,39 @@ describe('HistoryDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: /一覧に戻る/ }));
 
     expect(onBack).toHaveBeenCalled();
+  });
+});
+
+describe('History', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockApiGet.mockReset();
+    mockApiDelete.mockReset();
+    mockApiDelete.mockResolvedValue({ message: '削除しました' });
+  });
+
+  it('renders HistoryList by default', async () => {
+    mockApiGet.mockResolvedValue(EMPTY_RESPONSE);
+    render(<History />);
+
+    await waitFor(() => {
+      expect(screen.getByText('履歴がありません。')).toBeInTheDocument();
+    });
+  });
+
+  it('renders HistoryDetail when item is selected', async () => {
+    mockApiGet.mockResolvedValueOnce(LIST_RESPONSE);
+    mockApiGet.mockResolvedValueOnce(DETAIL_RESPONSE);
+    render(<History />);
+
+    await waitFor(() => {
+      expect(screen.getByText('これはテストテキストのプレビューです。校正結果の確認用に保存されました。')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByText('これはテストテキストのプレビューです。校正結果の確認用に保存されました。'));
+
+    await waitFor(() => {
+      expect(screen.getByText('校正履歴詳細')).toBeInTheDocument();
+    });
   });
 });
