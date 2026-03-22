@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { HighlightView, CompareView } from './DiffView';
 
 const TABS = [
   { id: 'highlight', label: '① ハイライト表示' },
@@ -196,14 +197,10 @@ export default function ResultView({ result, onRetry }) {
 
           <div className="result-view__panel" role="tabpanel">
             {activeTab === 'highlight' && (
-              <div className="result-view__placeholder">
-                <p>ハイライト表示は今後実装されます。</p>
-              </div>
+              <HighlightView diffs={result.diffs} />
             )}
             {activeTab === 'compare' && (
-              <div className="result-view__placeholder">
-                <p>比較表示は今後実装されます。</p>
-              </div>
+              <CompareView diffs={result.diffs} />
             )}
             {activeTab === 'comments' && (
               <CorrectionList corrections={result.corrections} />
