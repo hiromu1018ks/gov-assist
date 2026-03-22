@@ -1,10 +1,19 @@
+// src/tools/proofreading/Proofreading.jsx
+import InputArea from './InputArea';
+
 function Proofreading() {
+  const handleSubmit = (text, documentType) => {
+    // Task 19 will implement the full proofreading flow:
+    // preprocessing → API call → result display
+    console.log('Proofread requested:', { textLength: text.length, documentType });
+  };
+
   return (
-    <div className="card">
+    <div>
       <h2>AI 文書校正</h2>
-      <p className="mt-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        このツールは Task 15〜19 で実装されます。
-      </p>
+      <div className="mt-md">
+        <InputArea onSubmit={handleSubmit} isSubmitting={false} />
+      </div>
     </div>
   );
 }

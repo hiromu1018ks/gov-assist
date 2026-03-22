@@ -20,6 +20,11 @@ vi.mock('./api/client', () => ({
   apiGet: vi.fn(() => Promise.resolve({ models: [] })),
 }));
 
+// Mock fileExtractor (used by InputArea)
+vi.mock('./tools/proofreading/fileExtractor', () => ({
+  extractText: vi.fn(),
+}));
+
 import App from './App';
 
 beforeEach(() => {
@@ -50,11 +55,11 @@ describe('App', () => {
     expect(within(sidebar).getByText('設定')).toBeInTheDocument();
   });
 
-  it('renders proofreading placeholder on default route /', () => {
+  it('renders proofreading tool on default route /', () => {
     renderApp('/');
     const main = screen.getByRole('main');
     expect(within(main).getByText('AI 文書校正')).toBeInTheDocument();
-    expect(within(main).getByText(/Task 15/)).toBeInTheDocument();
+    expect(within(main).getByText(/外部 AI サービス/)).toBeInTheDocument();
   });
 
   it('renders settings placeholder on /settings route', () => {
@@ -67,6 +72,6 @@ describe('App', () => {
   it('redirects unknown routes to /', () => {
     renderApp('/unknown-page');
     const main = screen.getByRole('main');
-    expect(within(main).getByText(/Task 15/)).toBeInTheDocument();
+    expect(within(main).getByText(/外部 AI サービス/)).toBeInTheDocument();
   });
 });
