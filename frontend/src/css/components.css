@@ -467,3 +467,56 @@
   margin-bottom: var(--spacing-md);
   line-height: 1.6;
 }
+
+/* --- Diff View (§3.3.4: Tab ① Highlight & Tab ② Compare) --- */
+
+/* Highlight view: single-column diff display */
+.diff-highlight {
+  font-size: var(--font-size-base);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.diff-highlight__empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-lg) 0;
+}
+
+/* Compare view: two-column side-by-side layout */
+.diff-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  max-height: 400px;
+}
+
+.diff-compare__panel {
+  font-size: var(--font-size-base);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.diff-compare__panel-header {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
