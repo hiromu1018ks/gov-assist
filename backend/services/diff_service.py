@@ -159,11 +159,83 @@ def compute_diffs(
     raise NotImplementedError("compute_diffs will be implemented in a later task")
 
 
-def _absorb_short_blocks(
-    diffs: list[tuple[int, str]],
-) -> list[tuple[int, str]]:
-    """Absorb short blocks into neighbors (Task 3)."""
-    raise NotImplementedError("_absorb_short_blocks will be implemented in a later task")
+def _absorb_short_blocks(blocks: list[dict]) -> list[dict]:
+    """Absorb short blocks to reduce diff noise.
+
+    §4.4 ステップ7: 短小ブロックの吸収
+    - 2文字未満の equal ブロックは前後の変更ブロックとマージする
+    - 1文字の孤立した delete/insert は隣接 equal に統合する
+
+    Processes blocks in a single forward pass with 4 cases:
+    1. Short equal between two change blocks → merge into preceding change
+    2. Short equal after a change block (before equal/end) → merge into change
+    3. Short equal before a change block (at start or after equal) → merge into change
+    4. Isolated 1-char change between equals → merge into preceding equal
+    """
+    if len(blocks) <= 2:
+        return [dict(b) for b in blocks]
+
+    result: list[dict] = []
+    i = 0
+    while i < len(blocks):
+        current = blocks[i]
+
+        # Case 1: Short equal between two change blocks
+        if (i + 2 < len(blocks)
+                and current["type"] != DiffType.EQUAL
+                and blocks[i + 1]["type"] == DiffType.EQUAL
+                and len(blocks[i + 1]["text"]) < SHORT_EQUAL_THRESHOLD
+                and blocks[i + 2]["type"] != DiffType.EQUAL):
+            result.append({
+                "type": current["type"],
+                "text": current["text"] + blocks[i + 1]["text"],
+            })
+            i += 2  # skip absorbed equal
+            continue
+
+        # Case 2: Short equal after a change block (before equal or end)
+        if (result
+                and current["type"] == DiffType.EQUAL
+                and len(current["text"]) < SHORT_EQUAL_THRESHOLD
+                and result[-1]["type"] != DiffType.EQUAL):
+            result[-1] = {
+                "type": result[-1]["type"],
+                "text": result[-1]["text"] + current["text"],
+            }
+            i += 1
+            continue
+
+        # Case 3: Short equal before a change block (at start or after equal)
+        if (current["type"] == DiffType.EQUAL
+                and len(current["text"]) < SHORT_EQUAL_THRESHOLD
+                and i + 1 < len(blocks)
+                and blocks[i + 1]["type"] != DiffType.EQUAL
+                and (not result or result[-1]["type"] == DiffType.EQUAL)):
+            result.append({
+                "type": blocks[i + 1]["type"],
+                "text": current["text"] + blocks[i + 1]["text"],
+            })
+            i += 2  # skip both absorbed equal and change
+            continue
+
+        # Case 4: Isolated 1-char change between equals
+        if (current["type"] in (DiffType.DELETE, DiffType.INSERT)
+                and len(current["text"]) == SHORT_CHANGE_THRESHOLD
+                and result
+                and result[-1]["type"] == DiffType.EQUAL
+                and i + 1 < len(blocks)
+                and blocks[i + 1]["type"] == DiffType.EQUAL):
+            result[-1] = {
+                "type": DiffType.EQUAL,
+                "text": result[-1]["text"] + current["text"],
+            }
+            i += 1
+            continue
+
+        result.append(dict(current))
+        i += 1
+
+    return result
 
 
 def _normalize_order(

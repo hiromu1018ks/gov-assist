@@ -188,3 +188,88 @@ class TestMergeConsecutive:
         result = _merge_consecutive(raw)
         assert len(result) == 1
         assert result[0]["text"] == "abc"
+
+
+class TestAbsorbShortBlocks:
+    """§4.4 ステップ7: 短小ブロックの吸収"""
+
+    @staticmethod
+    def _b(type_str: str, text: str) -> dict:
+        type_map = {
+            "equal": DiffType.EQUAL,
+            "delete": DiffType.DELETE,
+            "insert": DiffType.INSERT,
+        }
+        return {"type": type_map[type_str], "text": text}
+
+    def test_absorb_short_equal_between_changes(self):
+        """Short equal between delete and insert → absorbed into delete."""
+        blocks = [self._b("delete", "abc"), self._b("equal", "の"), self._b("insert", "def")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[0]["text"] == "abcの"
+        assert result[0]["type"] == DiffType.DELETE
+
+    def test_absorb_short_equal_after_change(self):
+        """Short equal after a change (before equal or end) → absorbed into change."""
+        blocks = [self._b("delete", "abc"), self._b("equal", "。"), self._b("equal", "def")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[0]["text"] == "abc。"
+
+    def test_absorb_short_equal_before_change(self):
+        """Short equal before a change (after equal or start) → absorbed into change."""
+        blocks = [self._b("equal", "abc"), self._b("equal", "。"), self._b("delete", "x")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[1]["text"] == "。x"
+
+    def test_isolated_single_char_change_between_equals(self):
+        """1-char isolated change between equals → absorbed into preceding equal."""
+        blocks = [self._b("equal", "abc"), self._b("delete", "。"), self._b("equal", "def")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[0]["text"] == "abc。"
+
+    def test_long_equal_not_absorbed(self):
+        """Equal blocks >= 2 chars must NOT be absorbed."""
+        blocks = [self._b("delete", "abc"), self._b("equal", "これは"), self._b("insert", "def")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 3
+
+    def test_exactly_threshold_not_absorbed(self):
+        """Equal blocks of exactly SHORT_EQUAL_THRESHOLD (2) chars are NOT absorbed."""
+        blocks = [self._b("delete", "abc"), self._b("equal", "の。"), self._b("insert", "def")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 3
+
+    def test_empty_blocks(self):
+        assert _absorb_short_blocks([]) == []
+
+    def test_two_blocks_unchanged(self):
+        """2 blocks → no absorption possible, return copies."""
+        blocks = [self._b("equal", "a"), self._b("delete", "b")]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[0] == blocks[0]
+        assert result[1] == blocks[1]
+
+    def test_single_char_delete_not_isolated(self):
+        """1-char delete adjacent to a change (not between equals) → not absorbed."""
+        blocks = [self._b("delete", "abc"), self._b("delete", "。"), self._b("insert", "def")]
+        result = _absorb_short_blocks(blocks)
+        # The 1-char delete is between two changes, not between equals
+        # so case 4 doesn't apply. Should remain 3 blocks.
+        assert len(result) == 3
+
+    def test_cascade_absorption(self):
+        """Multiple short equals after a change → all absorbed."""
+        blocks = [
+            self._b("delete", "abc"),
+            self._b("equal", "の"),
+            self._b("equal", "。"),
+            self._b("insert", "def"),
+        ]
+        result = _absorb_short_blocks(blocks)
+        assert len(result) == 2
+        assert result[0]["text"] == "abcの。"
