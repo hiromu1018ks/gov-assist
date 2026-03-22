@@ -95,7 +95,7 @@ export default function Settings() {
 
       {/* --- Client Settings --- */}
       <section className="settings__section">
-        <h3 className="settings__section-title">AI モデル</h3>
+        <h3 className="settings__section-title">AI モデル選択</h3>
         {modelsError ? (
           <p className="message message--error">{modelsError}</p>
         ) : (
