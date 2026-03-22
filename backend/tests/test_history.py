@@ -229,3 +229,135 @@ class TestCreateHistory:
         result = _make_proofread_response()
         record = _create_history_via_service(db_session, result=result)
         assert record.truncated is False
+
+
+class TestGetHistoryList:
+    """History service — list tests."""
+
+    def test_returns_items_in_descending_order(self, db_session):
+        from services.history_service import get_history_list
+        for i in range(3):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        items, total = get_history_list(db_session)
+        assert total == 3
+        assert items[0].input_text == "文書2"
+
+    def test_respects_limit(self, db_session):
+        from services.history_service import get_history_list
+        for i in range(5):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        items, total = get_history_list(db_session, limit=2)
+        assert total == 5
+        assert len(items) == 2
+
+    def test_respects_offset(self, db_session):
+        from services.history_service import get_history_list
+        for i in range(5):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        items, total = get_history_list(db_session, limit=2, offset=2)
+        assert len(items) == 2
+        # offset=2 skips the 2 newest, so we get items[2] and items[3]
+        assert items[0].input_text == "文書2"
+
+    def test_filter_by_document_type(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, document_type="email")
+        _create_history_via_service(db_session, document_type="official")
+        _create_history_via_service(db_session, document_type="email")
+        items, total = get_history_list(db_session, document_type="email")
+        assert total == 2
+        assert all(it.document_type == "email" for it in items)
+
+    def test_filter_by_date_range(self, db_session):
+        from services.history_service import get_history_list
+        from datetime import datetime, timezone, timedelta
+        # Create records with specific timestamps
+        h1 = _create_history_via_service(db_session)
+        h1.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        h2 = _create_history_via_service(db_session)
+        h2.created_at = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        h3 = _create_history_via_service(db_session)
+        h3.created_at = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        db_session.flush()
+        items, total = get_history_list(
+            db_session,
+            date_from=datetime(2026, 2, 1, tzinfo=timezone.utc),
+            date_to=datetime(2026, 5, 1, tzinfo=timezone.utc),
+        )
+        assert total == 1
+
+    def test_empty_list(self, db_session):
+        from services.history_service import get_history_list
+        items, total = get_history_list(db_session)
+        assert total == 0
+        assert items == []
+
+    def test_default_limit_is_20(self, db_session):
+        from services.history_service import get_history_list
+        for i in range(25):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        items, total = get_history_list(db_session)
+        assert len(items) == 20
+        assert total == 25
+
+
+class TestGetHistoryById:
+    """History service — get by id tests."""
+
+    def test_returns_record(self, db_session):
+        from services.history_service import get_history_by_id
+        record = _create_history_via_service(db_session, input_text="特定文書")
+        fetched = get_history_by_id(db_session, record.id)
+        assert fetched is not None
+        assert fetched.input_text == "特定文書"
+
+    def test_returns_none_for_nonexistent(self, db_session):
+        from services.history_service import get_history_by_id
+        result = get_history_by_id(db_session, 9999)
+        assert result is None
+
+
+class TestUpdateHistoryMemo:
+    """History service — update memo tests."""
+
+    def test_updates_memo(self, db_session):
+        from services.history_service import update_history_memo, get_history_by_id
+        record = _create_history_via_service(db_session)
+        updated = update_history_memo(db_session, record.id, "新しいメモ")
+        assert updated.memo == "新しいメモ"
+        fetched = get_history_by_id(db_session, record.id)
+        assert fetched.memo == "新しいメモ"
+
+    def test_clears_memo_with_none(self, db_session):
+        from services.history_service import update_history_memo, get_history_by_id
+        record = _create_history_via_service(db_session, memo="元のメモ")
+        updated = update_history_memo(db_session, record.id, None)
+        assert updated.memo is None
+
+    def test_returns_none_for_nonexistent(self, db_session):
+        from services.history_service import update_history_memo
+        result = update_history_memo(db_session, 9999, "メモ")
+        assert result is None
+
+
+class TestDeleteHistory:
+    """History service — delete tests."""
+
+    def test_delete_single(self, db_session):
+        from services.history_service import delete_history, get_history_by_id
+        record = _create_history_via_service(db_session)
+        delete_history(db_session, record.id)
+        assert get_history_by_id(db_session, record.id) is None
+
+    def test_delete_nonexistent_returns_false(self, db_session):
+        from services.history_service import delete_history
+        assert delete_history(db_session, 9999) is False
+
+    def test_delete_all(self, db_session):
+        from services.history_service import delete_all_history, get_history_list
+        for i in range(5):
+            _create_history_via_service(db_session)
+        count = delete_all_history(db_session)
+        assert count == 5
+        items, total = get_history_list(db_session)
+        assert total == 0

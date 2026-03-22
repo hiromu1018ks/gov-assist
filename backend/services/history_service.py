@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
@@ -128,3 +129,104 @@ def create_history(
 def get_history_by_id(db: Session, history_id: int) -> History | None:
     """Fetch a single history record by ID."""
     return db.query(History).filter(History.id == history_id).first()
+
+
+def get_history_list(
+    db: Session,
+    *,
+    q: str | None = None,
+    document_type: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[History], int]:
+    """List history records with optional filters and pagination."""
+    query = db.query(History)
+
+    # Filters
+    if document_type:
+        query = query.filter(History.document_type == document_type)
+    if date_from:
+        query = query.filter(History.created_at >= date_from)
+    if date_to:
+        query = query.filter(History.created_at <= date_to)
+
+    # Full-text search
+    if q:
+        query = _apply_search(db, query, q)
+
+    # Count before pagination
+    total = query.count()
+
+    # Order by created_at DESC, then paginate
+    items = (
+        query.order_by(History.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return items, total
+
+
+def update_history_memo(db: Session, history_id: int, memo: str | None) -> History | None:
+    """Update the memo field of a history record."""
+    record = get_history_by_id(db, history_id)
+    if record is None:
+        return None
+    record.memo = memo
+    db.flush()
+    return record
+
+
+def delete_history(db: Session, history_id: int) -> bool:
+    """Delete a single history record. Returns True if deleted."""
+    record = get_history_by_id(db, history_id)
+    if record is None:
+        return False
+    db.delete(record)
+    db.flush()
+    return True
+
+
+def delete_all_history(db: Session) -> int:
+    """Delete all history records. Returns count of deleted records."""
+    count = db.query(History).count()
+    if count > 0:
+        db.query(History).delete()
+        db.flush()
+    return count
+
+
+def _apply_search(db: Session, query, q: str):
+    """Apply full-text search using FTS5 or LIKE fallback."""
+    if FTS5_NGRAM_SUPPORTED:
+        try:
+            return _search_with_fts5(query, q)
+        except Exception:
+            logger.warning("FTS5 search failed, falling back to LIKE")
+    return _search_with_like(query, q)
+
+
+def _search_with_fts5(query, q: str):
+    """Search using FTS5 ngram virtual table."""
+    return (
+        query.join(
+            text("history_fts"),
+            text("history_fts.rowid = history.id"),
+        )
+        .filter(text("history_fts MATCH :q"))
+        .params(q=q)
+    )
+
+
+def _search_with_like(query, q: str):
+    """Fallback search using LIKE."""
+    pattern = f"%{q}%"
+    return query.filter(
+        or_(
+            History.input_text.like(pattern),
+            History.memo.like(pattern),
+        )
+    )
