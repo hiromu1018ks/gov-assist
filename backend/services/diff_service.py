@@ -282,11 +282,34 @@ def _normalize_order(blocks: list[dict]) -> list[dict]:
     return result
 
 
-def _calculate_starts(
-    diffs: list[tuple[int, str]],
-) -> list[DiffBlock]:
-    """Convert raw diffs to DiffBlocks with start positions (Task 5)."""
-    raise NotImplementedError("_calculate_starts will be implemented in a later task")
+def _calculate_starts(blocks: list[dict]) -> list[dict]:
+    """Calculate start positions for diff blocks relative to input text.
+
+    §4.6: start は元テキスト（入力テキスト）の文字位置を基準とする。
+    - EQUAL: start = current_pos, advance by len(text)
+    - DELETE: start = current_pos, advance by len(text)
+    - INSERT: start = position of preceding DELETE if any, else current_pos.
+      INSERT does NOT advance the position counter.
+
+    After a DELETE, any following INSERTs share the same start as that DELETE.
+    Once a non-INSERT block is encountered, the DELETE's start is no longer
+    referenced.
+
+    Modifies blocks in-place by adding "start" field. Returns the same list.
+    """
+    pos = 0
+    last_delete_start: int | None = None
+    for block in blocks:
+        if block["type"] == DiffType.INSERT:
+            block["start"] = last_delete_start if last_delete_start is not None else pos
+        else:
+            block["start"] = pos
+            pos += len(block["text"])
+            if block["type"] == DiffType.DELETE:
+                last_delete_start = block["start"]
+            else:
+                last_delete_start = None
+    return blocks
 
 
 def _match_corrections(

@@ -382,3 +382,98 @@ class TestNormalizeOrder:
         result = _normalize_order(blocks)
         assert len(result) == 2
         assert all(b["type"] == DiffType.EQUAL for b in result)
+
+
+class TestCalculateStarts:
+    """Start position calculation for diff blocks relative to input text."""
+
+    @staticmethod
+    def _b(type_str: str, text: str) -> dict:
+        type_map = {
+            "equal": DiffType.EQUAL,
+            "delete": DiffType.DELETE,
+            "insert": DiffType.INSERT,
+        }
+        return {"type": type_map[type_str], "text": text}
+
+    def test_basic_starts(self):
+        """EQUAL(AB), DELETE(C), INSERT(X), EQUAL(DE) -> starts: 0, 2, 2, 3."""
+        blocks = [
+            self._b("equal", "AB"),
+            self._b("delete", "C"),
+            self._b("insert", "X"),
+            self._b("equal", "DE"),
+        ]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0
+        assert result[1]["start"] == 2   # DELETE at pos 2
+        assert result[2]["start"] == 2   # INSERT after pos 2 (same as delete)
+        assert result[3]["start"] == 3   # EQUAL resumes after deleted char
+
+    def test_insert_only(self):
+        """INSERT at beginning -> start=0."""
+        blocks = [self._b("insert", "XYZ")]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0
+
+    def test_delete_only(self):
+        """DELETE at beginning -> start=0."""
+        blocks = [self._b("delete", "ABC")]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0
+
+    def test_equal_only(self):
+        blocks = [self._b("equal", "hello")]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0
+
+    def test_multiple_changes(self):
+        """Multiple change pairs -> correct cumulative positions."""
+        blocks = [
+            self._b("equal", "AB"),
+            self._b("delete", "C"),
+            self._b("insert", "X"),
+            self._b("equal", "DE"),
+            self._b("delete", "F"),
+            self._b("insert", "Y"),
+            self._b("equal", "GH"),
+        ]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0   # EQUAL "AB"
+        assert result[1]["start"] == 2   # DELETE "C"
+        assert result[2]["start"] == 2   # INSERT "X"
+        assert result[3]["start"] == 3   # EQUAL "DE"
+        assert result[4]["start"] == 5   # DELETE "F"
+        assert result[5]["start"] == 5   # INSERT "Y"
+        assert result[6]["start"] == 6   # EQUAL "GH"
+
+    def test_japanese_positions(self):
+        """Japanese text: positions are character-based, not byte-based."""
+        blocks = [
+            self._b("equal", "これは"),
+            self._b("delete", "テスト"),
+            self._b("insert", "例文"),
+            self._b("equal", "です"),
+        ]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0   # "これは" = 3 chars
+        assert result[1]["start"] == 3   # DELETE at pos 3
+        assert result[2]["start"] == 3   # INSERT at pos 3
+        assert result[3]["start"] == 6   # EQUAL after "テスト" (3 chars)
+
+    def test_empty_blocks(self):
+        assert _calculate_starts([]) == []
+
+    def test_insert_does_not_advance_position(self):
+        """INSERT blocks do not advance the input position counter."""
+        blocks = [
+            self._b("equal", "A"),
+            self._b("insert", "XX"),
+            self._b("insert", "YY"),
+            self._b("equal", "B"),
+        ]
+        result = _calculate_starts(blocks)
+        assert result[0]["start"] == 0  # EQUAL "A"
+        assert result[1]["start"] == 1  # INSERT at pos 1
+        assert result[2]["start"] == 1  # INSERT at pos 1 (no advance)
+        assert result[3]["start"] == 1  # EQUAL "B" (no advance from inserts)
