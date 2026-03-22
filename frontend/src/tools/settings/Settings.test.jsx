@@ -160,8 +160,8 @@ describe('Settings', () => {
     setup();
     expect(screen.getByLabelText('誤字・脱字・変換ミスの検出')).toBeInTheDocument();
     expect(screen.getByLabelText('敬語・丁寧語の適切さチェック')).toBeInTheDocument();
-    expect(screen.getByLabelText('公文書用語・表現への統一')).toBeInTheDocument();
-    expect(screen.getByLabelText('文体の統一')).toBeInTheDocument();
+    expect(screen.getByLabelText(/公文書用語・表現への統一/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/文体の統一/)).toBeInTheDocument();
     expect(screen.getByLabelText('法令・条例用語の確認')).toBeInTheDocument();
     expect(screen.getByLabelText('文章の読みやすさ・論理構成の改善提案')).toBeInTheDocument();
   });
@@ -224,8 +224,8 @@ describe('Settings', () => {
   });
 
   it('shows error message when server settings save fails', async () => {
-    mockApiPut.mockRejectedValue(new Error('サーバーエラー'));
     setup();
+    mockApiPut.mockRejectedValue(new Error('サーバーエラー'));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'サーバー設定を保存' })).toBeInTheDocument();
@@ -240,8 +240,8 @@ describe('Settings', () => {
 
   it('disables save button while saving server settings', async () => {
     let resolvePut;
-    mockApiPut.mockReturnValue(new Promise((resolve) => { resolvePut = resolve; }));
     setup();
+    mockApiPut.mockReturnValue(new Promise((resolve) => { resolvePut = resolve; }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'サーバー設定を保存' })).toBeInTheDocument();

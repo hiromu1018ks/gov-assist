@@ -66,7 +66,7 @@ describe('App', () => {
     renderApp('/settings');
     const main = screen.getByRole('main');
     expect(within(main).getByText('設定')).toBeInTheDocument();
-    expect(within(main).getByText(/Task 21/)).toBeInTheDocument();
+    expect(within(main).getAllByText('AI モデル').length).toBeGreaterThan(0);
   });
 
   it('redirects unknown routes to /', () => {
