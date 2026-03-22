@@ -17,10 +17,12 @@ vi.mock('../proofreading/ResultView', () => ({
   ),
 }));
 
-import { apiGet, apiDelete } from '../../api/client';
+import { apiGet, apiPatch, apiDelete } from '../../api/client';
 import HistoryList from './HistoryList';
+import HistoryDetail from './HistoryDetail';
 
 const mockApiGet = vi.mocked(apiGet);
+const mockApiPatch = vi.mocked(apiPatch);
 const mockApiDelete = vi.mocked(apiDelete);
 
 // --- Fixtures ---
@@ -69,6 +71,51 @@ function setupList(response = LIST_RESPONSE) {
   const onSelectItem = vi.fn();
   const utils = render(<HistoryList onSelectItem={onSelectItem} />);
   return { onSelectItem, utils };
+}
+
+const DETAIL_RESPONSE = {
+  id: 1,
+  input_text: 'テストテキストです。修正箇所があります。',
+  result: {
+    request_id: 'test-uuid-001',
+    status: 'success',
+    status_reason: null,
+    warnings: [],
+    corrected_text: 'テストテキストです。修正箇所があります。',
+    summary: '1件の修正を行いました。',
+    corrections: [
+      { original: '修正前', corrected: '修正後', reason: 'タイポ修正', category: '誤字脱字', diff_matched: true },
+    ],
+    diffs: [
+      { type: 'equal', text: 'テキスト', start: 0, position: null, reason: null },
+      { type: 'delete', text: '前', start: 4, position: null, reason: 'タイポ修正' },
+      { type: 'insert', text: '後', start: 4, position: 'after', reason: 'タイポ修正' },
+    ],
+  },
+  model: 'kimi-k2.5',
+  document_type: 'official',
+  created_at: '2026-03-22T10:00:00+09:00',
+  truncated: false,
+  memo: null,
+};
+
+const TRUNCATED_DETAIL = {
+  ...DETAIL_RESPONSE,
+  id: 2,
+  truncated: true,
+  result: {
+    ...DETAIL_RESPONSE.result,
+    corrections: [],
+    diffs: [],
+  },
+};
+
+function setupDetail(response = DETAIL_RESPONSE) {
+  mockApiGet.mockResolvedValue(response);
+  mockApiPatch.mockResolvedValue(response);
+  const onBack = vi.fn();
+  const utils = render(<HistoryDetail historyId={response.id} onBack={onBack} />);
+  return { onBack, utils };
 }
 
 describe('HistoryList', () => {
@@ -274,5 +321,133 @@ describe('HistoryList', () => {
 
     expect(window.confirm).toHaveBeenCalledWith('全ての履歴を削除しますか？この操作は取り消せません。');
     expect(mockApiDelete).toHaveBeenCalledWith('/api/history');
+  });
+});
+
+describe('HistoryDetail', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockApiGet.mockReset();
+    mockApiPatch.mockReset();
+    mockApiDelete.mockReset();
+    mockApiDelete.mockResolvedValue({ message: '削除しました' });
+  });
+
+  // --- Fetch and render ---
+
+  it('fetches and displays history detail', async () => {
+    setupDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('校正履歴詳細')).toBeInTheDocument();
+    });
+    expect(screen.getByText('テストテキストです。修正箇所があります。')).toBeInTheDocument();
+  });
+
+  it('shows loading state while fetching', async () => {
+    let resolveApi;
+    mockApiGet.mockReturnValue(new Promise((resolve) => { resolveApi = resolve; }));
+    setupDetail();
+
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+
+    resolveApi(DETAIL_RESPONSE);
+    await waitFor(() => {
+      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows error when fetch fails', async () => {
+    mockApiGet.mockRejectedValue(new Error('見つかりません'));
+    const onBack = vi.fn();
+    render(<HistoryDetail historyId={1} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('見つかりません')).toBeInTheDocument();
+    });
+  });
+
+  // --- ResultView ---
+
+  it('renders ResultView with saved result', async () => {
+    setupDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('result-view')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('result-view')).toHaveTextContent('Status: success');
+  });
+
+  // --- Truncated ---
+
+  it('shows truncated warning for truncated records', async () => {
+    setupDetail(TRUNCATED_DETAIL);
+
+    await waitFor(() => {
+      expect(screen.getByText(/データサイズ超過のため/)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('result-view')).not.toBeInTheDocument();
+  });
+
+  // --- Memo ---
+
+  it('loads existing memo', async () => {
+    const withMemo = { ...DETAIL_RESPONSE, memo: '確認用のメモ' };
+    setupDetail(withMemo);
+
+    await waitFor(() => {
+      expect(screen.getByText('校正履歴詳細')).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText('メモ')).toHaveValue('確認用のメモ');
+  });
+
+  it('saves memo via PATCH API', async () => {
+    setupDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('校正履歴詳細')).toBeInTheDocument();
+    });
+
+    const memoTextarea = screen.getByLabelText('メモ');
+    await userEvent.type(memoTextarea, '新しいメモ');
+    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() => {
+      expect(mockApiPatch).toHaveBeenCalledWith('/api/history/1', { memo: '新しいメモ' });
+    });
+  });
+
+  // --- Delete ---
+
+  it('deletes history and calls onBack', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { onBack } = setupDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '削除' }));
+
+    expect(window.confirm).toHaveBeenCalledWith('この履歴を削除しますか？');
+    await waitFor(() => {
+      expect(mockApiDelete).toHaveBeenCalledWith('/api/history/1');
+      expect(onBack).toHaveBeenCalled();
+    });
+  });
+
+  // --- Navigation ---
+
+  it('calls onBack when back button is clicked', async () => {
+    const { onBack } = setupDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /一覧に戻る/ })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /一覧に戻る/ }));
+
+    expect(onBack).toHaveBeenCalled();
   });
 });
