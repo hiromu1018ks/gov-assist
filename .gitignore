@@ -6,3 +6,7 @@
 
 # Git worktrees
 .worktrees/
+
+# Frontend
+node_modules/
+dist/
