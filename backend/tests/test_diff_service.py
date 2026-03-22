@@ -27,10 +27,12 @@ class TestDiffResult:
             warnings=[],
             status=ProofreadStatus.SUCCESS,
             status_reason=None,
+            corrections=[],
         )
         assert len(result.diffs) == 1
         assert result.status == ProofreadStatus.SUCCESS
         assert result.warnings == []
+        assert result.corrections == []
 
     def test_create_with_warnings(self):
         result = DiffResult(
@@ -38,6 +40,7 @@ class TestDiffResult:
             warnings=["large_rewrite"],
             status=ProofreadStatus.SUCCESS,
             status_reason=None,
+            corrections=[],
         )
         assert result.warnings == ["large_rewrite"]
 
@@ -47,9 +50,22 @@ class TestDiffResult:
             warnings=[],
             status=ProofreadStatus.PARTIAL,
             status_reason=StatusReason.DIFF_TIMEOUT,
+            corrections=[],
         )
         assert result.status == ProofreadStatus.PARTIAL
         assert result.status_reason == StatusReason.DIFF_TIMEOUT
+
+    def test_create_with_corrections(self):
+        corrections = [CorrectionItem(original="申請", corrected="届出", reason="用語", category="用語")]
+        result = DiffResult(
+            diffs=[],
+            warnings=[],
+            status=ProofreadStatus.SUCCESS,
+            status_reason=None,
+            corrections=corrections,
+        )
+        assert len(result.corrections) == 1
+        assert result.corrections[0].original == "申請"
 
 
 class TestDiffTimeoutError:
@@ -706,3 +722,222 @@ class TestDetectLargeRewrite:
         # changed = 3/10 = 30% (NOT > 30%), consecutive = 3/10 = 30% (NOT > 30%)
         warnings = _detect_large_rewrite(diffs, input_length=10)
         assert warnings == []
+
+
+class TestComputeDiffs:
+    """Integration tests for the compute_diffs() orchestrator."""
+
+    def test_basic_proofreading(self):
+        """Simple correction: longer text with one change produces correct diffs."""
+        result = compute_diffs(
+            input_text="ABCDEF",
+            corrected_text="ABCXEF",
+            corrections=[],
+            request_id="test-1",
+        )
+        assert result.status == ProofreadStatus.SUCCESS
+        assert result.status_reason is None
+        change_diffs = [d for d in result.diffs if d.type != DiffType.EQUAL]
+        assert len(change_diffs) >= 1
+
+    def test_identical_texts_no_changes(self):
+        result = compute_diffs(
+            input_text="全く同じテキスト",
+            corrected_text="全く同じテキスト",
+            corrections=[],
+            request_id="test-2",
+        )
+        assert result.status == ProofreadStatus.SUCCESS
+        assert len(result.diffs) == 1
+        assert result.diffs[0].type == DiffType.EQUAL
+        assert result.diffs[0].text == "全く同じテキスト"
+
+    def test_with_corrections_matching(self):
+        """Corrections should be matched to diff blocks."""
+        result = compute_diffs(
+            input_text="申請書類を提出してください",
+            corrected_text="届出書類を提出してください",
+            corrections=[
+                CorrectionItem(
+                    original="申請書類",
+                    corrected="届出書類",
+                    reason="用語の統一",
+                    category="用語",
+                ),
+            ],
+            request_id="test-3",
+        )
+        assert result.status == ProofreadStatus.SUCCESS
+        reasons = [d.reason for d in result.diffs if d.reason is not None]
+        assert "用語の統一" in reasons
+        assert result.corrections[0].diff_matched is True
+
+    def test_large_rewrite_detection(self):
+        """Text with >30% change -> large_rewrite warning."""
+        input_text = "あいうえおかきくけこ"  # 10 chars
+        corrected_text = "さしすせそたちつてと"  # completely different, 10 chars
+        result = compute_diffs(
+            input_text=input_text,
+            corrected_text=corrected_text,
+            corrections=[],
+            request_id="test-4",
+        )
+        assert "large_rewrite" in result.warnings
+
+    def test_enable_diff_compaction_false(self):
+        """When compaction is disabled, short blocks should not be absorbed."""
+        input_text = "ABCのDE"
+        corrected_text = "ABCxDE"
+        result_compacted = compute_diffs(
+            input_text=input_text,
+            corrected_text=corrected_text,
+            corrections=[],
+            request_id="test-5a",
+            enable_diff_compaction=True,
+        )
+        result_no_compact = compute_diffs(
+            input_text=input_text,
+            corrected_text=corrected_text,
+            corrections=[],
+            request_id="test-5b",
+            enable_diff_compaction=False,
+        )
+        assert len(result_no_compact.diffs) >= len(result_compacted.diffs)
+
+    def test_insert_position_field(self):
+        """INSERT blocks must have position='after'."""
+        result = compute_diffs(
+            input_text="ABC",
+            corrected_text="AXBC",
+            corrections=[],
+            request_id="test-6",
+        )
+        insert_blocks = [d for d in result.diffs if d.type == DiffType.INSERT]
+        for block in insert_blocks:
+            assert block.position == "after"
+
+    def test_delete_and_equal_no_position(self):
+        """DELETE and EQUAL blocks must have position=None."""
+        result = compute_diffs(
+            input_text="ABC",
+            corrected_text="AXC",
+            corrections=[],
+            request_id="test-7",
+        )
+        for block in result.diffs:
+            if block.type in (DiffType.DELETE, DiffType.EQUAL):
+                assert block.position is None
+
+    def test_timeout_fallback_to_line_diff(self):
+        """Character-level timeout -> falls back to line-level diff."""
+        call_count = 0
+
+        def mock_result(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise FuturesTimeoutError()
+            # Second call (line diff) returns real result
+            import difflib
+            lines1 = [""] * 0  # will be replaced by actual call
+            return [(0, "test")]
+
+        with patch("services.diff_service.ThreadPoolExecutor") as mock_executor_cls:
+            # First call: char diff times out. Second call: line diff succeeds.
+            timeout_future = MagicMock()
+            timeout_future.result.side_effect = FuturesTimeoutError()
+            success_future = MagicMock()
+            success_future.result.return_value = [
+                (0, "行0\n行1\n"), (-1, "行500\n"), (1, "変更行500\n"), (0, "行501\n行502\n"),
+            ]
+            mock_executor = MagicMock()
+            mock_executor.__enter__ = MagicMock(return_value=mock_executor)
+            mock_executor.__exit__ = MagicMock(return_value=False)
+            mock_executor.submit.side_effect = [timeout_future, success_future]
+            mock_executor_cls.return_value = mock_executor
+
+            long_text = "\n".join(f"行{i}" for i in range(1000))
+            corrected = long_text.replace("行500", "変更行500")
+            result = compute_diffs(
+                input_text=long_text,
+                corrected_text=corrected,
+                corrections=[],
+                request_id="test-8",
+            )
+            assert result.status == ProofreadStatus.SUCCESS
+            assert len(result.diffs) > 0
+
+    def test_full_timeout_returns_partial(self):
+        """Both character and line-level timeout -> partial status."""
+        with patch("services.diff_service.ThreadPoolExecutor") as mock_executor_cls:
+            mock_future = MagicMock()
+            mock_future.result.side_effect = FuturesTimeoutError()
+            mock_executor = MagicMock()
+            mock_executor.__enter__ = MagicMock(return_value=mock_executor)
+            mock_executor.__exit__ = MagicMock(return_value=False)
+            mock_executor.submit.return_value = mock_future
+            mock_executor_cls.return_value = mock_executor
+
+            long_text = "あ" * 100000
+            result = compute_diffs(
+                input_text=long_text,
+                corrected_text=long_text + "追加",
+                corrections=[],
+                request_id="test-9",
+            )
+            assert result.status == ProofreadStatus.PARTIAL
+            assert result.status_reason == StatusReason.DIFF_TIMEOUT
+            assert result.diffs == []
+
+    def test_japanese_realistic_proofreading(self):
+        """Realistic Japanese proofreading scenario."""
+        input_text = "お世話になっております。申請書類を提出いたします。よろしくお願いいたします。"
+        corrected_text = "お世話になっております。届出書類を提出いたします。よろしくお願いいたします。"
+        corrections = [
+            CorrectionItem(
+                original="申請書類",
+                corrected="届出書類",
+                reason="用語の統一：内部で使用する用語に合わせます",
+                category="用語",
+            ),
+        ]
+        result = compute_diffs(
+            input_text=input_text,
+            corrected_text=corrected_text,
+            corrections=corrections,
+            request_id="test-10",
+        )
+        assert result.status == ProofreadStatus.SUCCESS
+        assert result.warnings == []
+        changes = [d for d in result.diffs if d.type != DiffType.EQUAL]
+        assert len(changes) >= 2
+        assert corrections[0].diff_matched is True
+        # diff-match-patch may split "申請書類" into DELETE("申請") + EQUAL("書類");
+        # verify at least the deletion portion appears in DELETE blocks
+        delete_texts = [d.text for d in result.diffs if d.type == DiffType.DELETE]
+        assert any("申請" in t for t in delete_texts)
+
+    def test_multiple_corrections_partial_match(self):
+        """Multiple corrections: some match, some don't."""
+        input_text = "申請書類を提出してください。よろしくです。"
+        corrected_text = "届出書類を提出してください。よろしくお願いいたします。"
+        corrections = [
+            CorrectionItem(
+                original="申請書類", corrected="届出書類",
+                reason="用語統一", category="用語",
+            ),
+            CorrectionItem(
+                original="です", corrected="お願いいたします",
+                reason="敬語", category="敬語",
+            ),
+        ]
+        result = compute_diffs(
+            input_text=input_text,
+            corrected_text=corrected_text,
+            corrections=corrections,
+            request_id="test-11",
+        )
+        assert result.status == ProofreadStatus.SUCCESS
+        # "申請書類" (4 chars) should match; "です" (2 chars) should NOT (guard condition)
+        assert corrections[0].diff_matched is True
+        assert corrections[1].diff_matched is False

@@ -50,6 +50,7 @@ class DiffResult:
     warnings: list[str]
     status: ProofreadStatus
     status_reason: StatusReason | None
+    corrections: list[CorrectionItem]
 
 
 def _compute_raw_diffs(text1: str, text2: str) -> list[tuple[int, str]]:
@@ -150,13 +151,99 @@ def _merge_consecutive(diffs: list[tuple[int, str]]) -> list[dict]:
 
 
 def compute_diffs(
-    text1: str,
-    text2: str,
-    corrections: list[CorrectionItem] | None = None,
-    enable_compaction: bool = ENABLE_DIFF_COMPACTION_DEFAULT,
+    *,
+    input_text: str,
+    corrected_text: str,
+    corrections: list[CorrectionItem],
+    request_id: str,
+    enable_diff_compaction: bool = ENABLE_DIFF_COMPACTION_DEFAULT,
 ) -> DiffResult:
-    """Main entry point — orchestrates full diff pipeline."""
-    raise NotImplementedError("compute_diffs will be implemented in a later task")
+    """Compute diffs between input and corrected text with full processing pipeline.
+
+    S4.4 Step 5-11: diff computation, post-processing, corrections matching,
+    and large rewrite detection.
+
+    Pipeline:
+    5.  diff-match-patch (5s timeout -> line-level fallback -> partial)
+    6.  Merge consecutive same-type blocks
+    7.  Absorb short blocks (if enable_diff_compaction=True)
+    8.  Normalize order (4 rules)
+    9.  Calculate start positions
+    10. Match corrections via proximity
+    11. Detect large rewrite
+    """
+    # Step 5: Compute raw diffs with timeout
+    try:
+        raw_diffs = _compute_raw_diffs(input_text, corrected_text)
+    except DiffTimeoutError:
+        logger.warning(
+            "Character diff timeout, falling back to line diff: request_id=%s input_chars=%d",
+            request_id, len(input_text),
+        )
+        try:
+            raw_diffs = _compute_line_diff(input_text, corrected_text)
+        except DiffTimeoutError:
+            logger.warning(
+                "Line diff also timed out: request_id=%s input_chars=%d",
+                request_id, len(input_text),
+            )
+            return DiffResult(
+                diffs=[],
+                warnings=[],
+                status=ProofreadStatus.PARTIAL,
+                status_reason=StatusReason.DIFF_TIMEOUT,
+                corrections=corrections,
+            )
+
+    # Step 6: Merge consecutive same-type blocks
+    blocks = _merge_consecutive(raw_diffs)
+
+    # Step 7: Absorb short blocks (optional)
+    pre_compaction_count = len(blocks)
+    if enable_diff_compaction:
+        blocks = _absorb_short_blocks(blocks)
+        if len(blocks) != pre_compaction_count:
+            logger.info(
+                "Diff compaction: request_id=%s before=%d after=%d",
+                request_id, pre_compaction_count, len(blocks),
+            )
+
+    # Step 8: Normalize order
+    blocks = _normalize_order(blocks)
+
+    # Step 9 (partial): Calculate start positions
+    blocks = _calculate_starts(blocks)
+
+    # Step 10: Match corrections to diff blocks
+    _match_corrections(blocks, corrections, input_text)
+
+    # Step 11: Detect large rewrite
+    warnings = _detect_large_rewrite(blocks, len(input_text))
+    if warnings:
+        logger.warning(
+            "Large rewrite detected: request_id=%s input_chars=%d",
+            request_id, len(input_text),
+        )
+
+    # Convert to DiffBlock objects
+    diff_blocks = [
+        DiffBlock(
+            type=b["type"],
+            text=b["text"],
+            start=b["start"],
+            position="after" if b["type"] == DiffType.INSERT else None,
+            reason=b.get("reason"),
+        )
+        for b in blocks
+    ]
+
+    return DiffResult(
+        diffs=diff_blocks,
+        warnings=warnings,
+        status=ProofreadStatus.SUCCESS,
+        status_reason=None,
+        corrections=corrections,
+    )
 
 
 def _absorb_short_blocks(blocks: list[dict]) -> list[dict]:
