@@ -313,11 +313,81 @@ def _calculate_starts(blocks: list[dict]) -> list[dict]:
 
 
 def _match_corrections(
-    diffs: list[DiffBlock],
+    diffs: list[dict],
     corrections: list[CorrectionItem],
-) -> list[CorrectionItem]:
-    """Match AI corrections to diff blocks (Task 6)."""
-    raise NotImplementedError("_match_corrections will be implemented in a later task")
+    input_text: str,
+) -> None:
+    """Match corrections to diff blocks via proximity matching.
+
+    §4.5: 近傍マッチの定義
+    - ガード条件: original < 4 chars → マッチしない
+    - マッチ幅: min(20, original.length × 2) chars
+    - original の完全一致位置を入力テキスト中から検索
+    - 1 diff ブロック = max 1 reason（最長一致優先）
+    - 1 correction = 消費型（1回のみ使用）
+
+    Modifies diffs and corrections in-place.
+    """
+    used: set[int] = set()
+
+    for diff in diffs:
+        if diff["type"] == DiffType.EQUAL:
+            continue
+
+        best_idx: int | None = None
+        best_distance: float = float("inf")
+        best_original_len: int = 0
+
+        for idx, corr in enumerate(corrections):
+            if idx in used:
+                continue
+            if len(corr.original) < PROXIMITY_GUARD_LENGTH:
+                continue
+
+            match_width = min(PROXIMITY_BASE_WIDTH, len(corr.original) * 2)
+
+            # Find all occurrences of original in input_text
+            search_start = 0
+            while True:
+                pos = input_text.find(corr.original, search_start)
+                if pos == -1:
+                    break
+
+                # Calculate distance from this occurrence to the diff block
+                diff_start = diff["start"]
+                if diff["type"] == DiffType.DELETE:
+                    diff_end = diff_start + len(diff["text"])
+                else:  # INSERT — has no extent in original text
+                    diff_end = diff_start
+
+                # Check if occurrence is within match width of diff block
+                if pos + len(corr.original) > diff_start - match_width and pos < diff_end + match_width:
+                    # Calculate actual distance
+                    if pos + len(corr.original) <= diff_start:
+                        dist = diff_start - (pos + len(corr.original))
+                    elif pos >= diff_end:
+                        dist = pos - diff_end
+                    else:
+                        dist = 0  # overlap
+
+                    # Prefer closest distance, break ties by longest original
+                    if (dist < best_distance
+                            or (dist == best_distance and len(corr.original) > best_original_len)):
+                        best_distance = dist
+                        best_idx = idx
+                        best_original_len = len(corr.original)
+
+                search_start = pos + 1
+
+        if best_idx is not None:
+            used.add(best_idx)
+            diff["reason"] = corrections[best_idx].reason
+            corrections[best_idx].diff_matched = True
+
+    # Mark all unused corrections as unmatched
+    for idx, corr in enumerate(corrections):
+        if idx not in used:
+            corr.diff_matched = False
 
 
 def _detect_large_rewrite(

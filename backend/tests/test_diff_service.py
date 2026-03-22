@@ -477,3 +477,134 @@ class TestCalculateStarts:
         assert result[1]["start"] == 1  # INSERT at pos 1
         assert result[2]["start"] == 1  # INSERT at pos 1 (no advance)
         assert result[3]["start"] == 1  # EQUAL "B" (no advance from inserts)
+
+
+class TestMatchCorrections:
+    """§4.5: corrections の近傍マッチ"""
+
+    @staticmethod
+    def _b(type_str: str, text: str, start: int = 0) -> dict:
+        type_map = {
+            "equal": DiffType.EQUAL,
+            "delete": DiffType.DELETE,
+            "insert": DiffType.INSERT,
+        }
+        return {"type": type_map[type_str], "text": text, "start": start, "reason": None}
+
+    def test_basic_match(self):
+        """Correction original matches a DELETE block → reason assigned."""
+        diffs = [
+            {"type": DiffType.EQUAL, "text": "おはよう", "start": 0, "reason": None},
+            {"type": DiffType.DELETE, "text": "ございます", "start": 4, "reason": None},
+            {"type": DiffType.INSERT, "text": "ございます", "start": 4, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="ございます", corrected="ざいます", reason="誤字です", category="誤字脱字"),
+        ]
+        input_text = "おはようございます"
+        _match_corrections(diffs, corrections, input_text)
+        assert diffs[1]["reason"] == "誤字です"
+        assert corrections[0].diff_matched is True
+
+    def test_short_original_guard(self):
+        """Original < 4 chars → never matched (ガード条件)."""
+        diffs = [
+            {"type": DiffType.DELETE, "text": "です", "start": 0, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="です", corrected="ます", reason="敬語", category="敬語"),
+        ]
+        _match_corrections(diffs, corrections, "です")
+        assert diffs[0]["reason"] is None
+        assert corrections[0].diff_matched is False
+
+    def test_consumable_correction(self):
+        """Once matched, a correction cannot be used again."""
+        diffs = [
+            {"type": DiffType.DELETE, "text": "申請書類", "start": 0, "reason": None},
+            {"type": DiffType.DELETE, "text": "申請書類", "start": 10, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="申請書類", corrected="届出書類", reason="用語", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "申請書類xxxxx申請書類")
+        matched_count = sum(1 for d in diffs if d["reason"] is not None)
+        assert matched_count == 1
+
+    def test_one_diff_max_one_reason(self):
+        """1 diff block = max 1 reason. Longest original wins."""
+        diffs = [
+            {"type": DiffType.DELETE, "text": "申請書類", "start": 0, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="申請", corrected="届出", reason="短い理由", category="用語"),
+            CorrectionItem(original="申請書類", corrected="届出書類", reason="長い理由", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "申請書類")
+        assert diffs[0]["reason"] == "長い理由"
+
+    def test_no_match_far_away(self):
+        """Correction original far from diff block → no match."""
+        diffs = [
+            {"type": DiffType.DELETE, "text": "ABCD", "start": 100, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="ABCD", corrected="XYZW", reason="理由", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "x" * 100 + "ABCD")
+        assert diffs[0]["reason"] == "理由"
+
+    def test_replace_pair_assigns_reason_to_delete_block(self):
+        """In a delete+insert pair, the DELETE block receives the reason."""
+        diffs = [
+            {"type": DiffType.EQUAL, "text": "おはよう", "start": 0, "reason": None},
+            {"type": DiffType.DELETE, "text": "ございます", "start": 4, "reason": None},
+            {"type": DiffType.INSERT, "text": "ざいます", "start": 4, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="ございます", corrected="ざいます", reason="置換理由", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "おはようございます")
+        assert diffs[1]["reason"] == "置換理由"
+
+    def test_multiple_occurrences_picks_closest(self):
+        """Same text appearing multiple times → picks closest to diff block."""
+        input_text = "申請書類xxx申請書類yyy申請書類"
+        diffs = [
+            {"type": DiffType.DELETE, "text": "申請書類", "start": 15, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="申請書類", corrected="届出書類", reason="用語統一", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, input_text)
+        assert diffs[0]["reason"] == "用語統一"
+
+    def test_empty_corrections(self):
+        """No corrections → no reasons assigned."""
+        diffs = [
+            {"type": DiffType.DELETE, "text": "ABC", "start": 0, "reason": None},
+        ]
+        _match_corrections(diffs, [], "ABC")
+        assert diffs[0]["reason"] is None
+
+    def test_unmatched_corrections_marked_false(self):
+        """Corrections that don't match any diff → diff_matched=False."""
+        diffs = [
+            {"type": DiffType.EQUAL, "text": "ABC", "start": 0, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="XYZ", corrected="ZZZ", reason="理由", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "ABC")
+        assert corrections[0].diff_matched is False
+
+    def test_equal_blocks_never_get_reasons(self):
+        """EQUAL blocks should never receive reasons."""
+        diffs = [
+            {"type": DiffType.EQUAL, "text": "ABC", "start": 0, "reason": None},
+        ]
+        corrections = [
+            CorrectionItem(original="ABC", corrected="XYZ", reason="理由", category="用語"),
+        ]
+        _match_corrections(diffs, corrections, "ABC")
+        assert diffs[0]["reason"] is None
