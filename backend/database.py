@@ -51,14 +51,17 @@ def get_session_local(engine=None):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+# Module-level engine and session factory for get_db() dependency
+_engine = get_engine()
+_SessionLocal = get_session_local(_engine)
+
+
 def get_db():
     """FastAPI dependency: yield a DB session.
 
     Uses the default engine. The session is closed after the request.
     """
-    engine = get_engine()
-    SessionLocal = get_session_local(engine)
-    session = SessionLocal()
+    session = _SessionLocal()
     try:
         yield session
     finally:
