@@ -32,20 +32,21 @@ export default function InputArea({ onSubmit, isSubmitting }) {
   const handleFile = useCallback(async (file) => {
     setIsExtracting(true);
     setExtractionError(null);
-
-    const result = await extractText(file);
-
-    setIsExtracting(false);
-
-    if (result.error) {
-      setExtractionError(result.error);
-      return;
+    try {
+      const result = await extractText(file);
+      if (result.error) {
+        setExtractionError(result.error);
+        return;
+      }
+      setPreviousText(textRef.current);
+      setExtractionSource(file.name);
+      setText(result.text);
+      setExtractionError(null);
+    } catch {
+      setExtractionError('ファイルの読み込みに失敗しました。テキストを直接入力してください。');
+    } finally {
+      setIsExtracting(false);
     }
-
-    setPreviousText(textRef.current);
-    setExtractionSource(file.name);
-    setText(result.text);
-    setExtractionError(null);
   }, []);
 
   const handleTextChange = (e) => {
