@@ -38,7 +38,7 @@ export function HighlightView({ diffs }) {
 
         const tooltipProps =
           diff.reason
-            ? { className: `${className} tooltip`, 'data-tooltip': diff.reason }
+            ? { className: className ? `${className} tooltip` : 'tooltip', 'data-tooltip': diff.reason }
             : { className };
 
         return <span key={i} {...tooltipProps}>{diff.text}</span>;
@@ -95,7 +95,7 @@ export function CompareView({ diffs }) {
           if (diff.type === 'insert') return null;
           const className = diff.type === 'delete' ? 'diff-delete' : '';
           const tooltipProps = diff.reason
-            ? { className: `${className} tooltip`, 'data-tooltip': diff.reason }
+            ? { className: className ? `${className} tooltip` : 'tooltip', 'data-tooltip': diff.reason }
             : { className };
           return <span key={i} {...tooltipProps}>{diff.text}</span>;
         })}
@@ -110,7 +110,7 @@ export function CompareView({ diffs }) {
           if (diff.type === 'delete') return null;
           const className = diff.type === 'insert' ? 'diff-insert' : '';
           const tooltipProps = diff.reason
-            ? { className: `${className} tooltip`, 'data-tooltip': diff.reason }
+            ? { className: className ? `${className} tooltip` : 'tooltip', 'data-tooltip': diff.reason }
             : { className };
           return <span key={i} {...tooltipProps}>{diff.text}</span>;
         })}

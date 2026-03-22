@@ -77,10 +77,20 @@ describe('HighlightView', () => {
     expect(el).toHaveAttribute('data-tooltip', '正しい表記');
   });
 
-  // --- 空配列 ---
+  // --- 空配列・null/undefined ---
 
   it('shows empty message when diffs is empty', () => {
     render(<HighlightView diffs={[]} />);
+    expect(screen.getByText('表示する差分がありません。')).toBeInTheDocument();
+  });
+
+  it('shows empty message when diffs is null', () => {
+    render(<HighlightView diffs={null} />);
+    expect(screen.getByText('表示する差分がありません。')).toBeInTheDocument();
+  });
+
+  it('shows empty message when diffs prop is omitted', () => {
+    render(<HighlightView />);
     expect(screen.getByText('表示する差分がありません。')).toBeInTheDocument();
   });
 
