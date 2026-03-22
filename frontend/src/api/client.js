@@ -16,12 +16,12 @@ function generateRequestId() {
 
 async function request(method, path, body) {
   const requestId = generateRequestId();
-  const token = getToken();
+  // const token = getToken();  // Auth disabled for localhost MVP
 
   const headers = {
     'Content-Type': 'application/json',
     'X-Request-ID': requestId,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // ...(token ? { Authorization: `Bearer ${token}` } : {}),  // Auth disabled
   };
 
   const config = {
@@ -32,10 +32,11 @@ async function request(method, path, body) {
 
   const response = await fetch(path, config);
 
-  if (response.status === 401) {
-    removeToken();
-    window.dispatchEvent(new CustomEvent('auth:logout'));
-  }
+  // Auth disabled for localhost MVP
+  // if (response.status === 401) {
+  //   removeToken();
+  //   window.dispatchEvent(new CustomEvent('auth:logout'));
+  // }
 
   let data;
   const contentType = response.headers.get('content-type');
@@ -74,12 +75,12 @@ export async function apiPut(path, body) {
 
 export async function apiPostBlob(path, body) {
   const requestId = generateRequestId();
-  const token = getToken();
+  // const token = getToken();  // Auth disabled for localhost MVP
 
   const headers = {
     'Content-Type': 'application/json',
     'X-Request-ID': requestId,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // ...(token ? { Authorization: `Bearer ${token}` } : {}),  // Auth disabled
   };
 
   const response = await fetch(path, {
@@ -88,10 +89,11 @@ export async function apiPostBlob(path, body) {
     body: JSON.stringify(body),
   });
 
-  if (response.status === 401) {
-    removeToken();
-    window.dispatchEvent(new CustomEvent('auth:logout'));
-  }
+  // Auth disabled for localhost MVP
+  // if (response.status === 401) {
+  //   removeToken();
+  //   window.dispatchEvent(new CustomEvent('auth:logout'));
+  // }
 
   if (!response.ok) {
     let data;
