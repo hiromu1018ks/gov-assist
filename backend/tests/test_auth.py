@@ -4,7 +4,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from main import verify_token, get_app_token
+from dependencies import verify_token, get_app_token
 
 
 def _create_test_app() -> FastAPI:
