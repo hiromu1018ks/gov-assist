@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
-from dependencies import verify_token
+# from dependencies import verify_token  # Auth disabled for localhost MVP
 from schemas import (
     HistoryCreateRequest,
     HistoryDetailResponse,
@@ -38,7 +38,7 @@ async def list_history(
     date_to: datetime | None = Query(None, description="終了日 (ISO 8601)"),
     limit: int = Query(20, ge=1, le=200, description="取得件数"),
     offset: int = Query(0, ge=0, description="オフセット"),
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """履歴一覧を取得する (§5.4)."""
@@ -71,7 +71,7 @@ async def list_history(
 @router.post("/history", response_model=HistoryDetailResponse, status_code=201)
 async def save_history(
     payload: HistoryCreateRequest,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """校正結果を履歴に保存する (§7.1)."""
@@ -89,7 +89,7 @@ async def save_history(
 @router.get("/history/{history_id}", response_model=HistoryDetailResponse)
 async def get_history(
     history_id: int,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """履歴の詳細を取得する."""
@@ -103,7 +103,7 @@ async def get_history(
 async def patch_history(
     history_id: int,
     payload: HistoryUpdateRequest,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """履歴のメモを更新する."""
@@ -116,7 +116,7 @@ async def patch_history(
 @router.delete("/history/{history_id}")
 async def delete_history_endpoint(
     history_id: int,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """履歴を1件削除する."""
@@ -127,7 +127,7 @@ async def delete_history_endpoint(
 
 @router.delete("/history")
 async def delete_all_history_endpoint(
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """履歴を全件削除する."""

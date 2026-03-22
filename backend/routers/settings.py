@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
-from dependencies import verify_token
+# from dependencies import verify_token  # Auth disabled for localhost MVP
 from models import Settings
 from schemas import SettingsResponse, SettingsUpdateRequest
 
@@ -32,8 +32,7 @@ def _set_setting(db: Session, key: str, value: str) -> None:
 
 
 @router.get("/settings", response_model=SettingsResponse)
-async def get_settings(
-    token: str = Depends(verify_token),
+async def get_settings(  # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """Get server-side settings. Returns defaults for unset values."""
@@ -49,7 +48,7 @@ async def get_settings(
 @router.put("/settings", response_model=SettingsResponse)
 async def update_settings(
     payload: SettingsUpdateRequest,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
     db: Session = Depends(get_db),
 ):
     """Update server-side settings."""

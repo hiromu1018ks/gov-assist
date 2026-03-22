@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, Depends
 from starlette.responses import JSONResponse
 
-from dependencies import verify_token
+# from dependencies import verify_token  # Auth disabled for localhost MVP
 from schemas import (
     ErrorResponse,
     ProofreadRequest,
@@ -49,7 +49,7 @@ def _error_json(request_id: str, error: str, message: str, status: int) -> JSONR
 @router.post("/proofread", response_model=ProofreadResponse)
 async def proofread(
     payload: ProofreadRequest,
-    token: str = Depends(verify_token),
+    # token: str = Depends(verify_token)  # Auth disabled
 ):
     """AI 文書校正を実行する (§4.4, §5.2)."""
     request_id = payload.request_id

@@ -1,7 +1,7 @@
 """GET /api/models — 利用可能な AI モデル一覧 (§4.2, §5.1)."""
 from fastapi import APIRouter, Depends
 
-from dependencies import verify_token
+# from dependencies import verify_token  # Auth disabled for localhost MVP
 from schemas import ModelsResponse, ModelInfoResponse
 from services.ai_client import MODEL_CONFIGS
 
@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api", tags=["models"])
 
 
 @router.get("/models", response_model=ModelsResponse)
-async def get_models(token: str = Depends(verify_token)):
+async def get_models():  # token: str = Depends(verify_token)  # Auth disabled
     """Return all available AI models from the model config table."""
     models = [
         ModelInfoResponse(

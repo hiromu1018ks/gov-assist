@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from starlette.responses import JSONResponse
 
-from dependencies import verify_token
+# from dependencies import verify_token  # Auth disabled for localhost MVP
 from schemas import ErrorResponse, ExportDocxRequest
 from services.docx_exporter import generate_docx
 
@@ -22,7 +22,7 @@ _DOCX_FILENAME_ASCII = "corrected_document.docx"
 @router.post("/export/docx")
 async def export_docx(
     payload: ExportDocxRequest,
-    token: str = Depends(verify_token),  # noqa: ARG001
+    # token: str = Depends(verify_token)  # Auth disabled
 ):
     """校正済みテキストから .docx を生成して返す (§5.3, §6.2)."""
     try:
