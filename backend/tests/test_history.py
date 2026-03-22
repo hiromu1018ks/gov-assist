@@ -361,3 +361,47 @@ class TestDeleteHistory:
         assert count == 5
         items, total = get_history_list(db_session)
         assert total == 0
+
+
+class TestAutoCleanup:
+    """History service — auto-cleanup tests (§7.1)."""
+
+    def test_count_limit_deletes_oldest(self, db_session):
+        from services.history_service import create_history, get_history_list
+        from models import Settings
+        # Set limit to 3
+        db_session.add(Settings(key="history_limit", value="3"))
+        db_session.flush()
+        # Create 5 records
+        records = []
+        for i in range(5):
+            records.append(_create_history_via_service(db_session, input_text=f"文書{i}"))
+        # Only the 3 newest should remain
+        items, total = get_history_list(db_session)
+        assert total == 3
+        # Newest 3: 文書4, 文書3, 文書2
+        input_texts = [it.input_text for it in items]
+        assert "文書4" in input_texts
+        assert "文書3" in input_texts
+        assert "文書2" in input_texts
+        assert "文書0" not in input_texts
+        assert "文書1" not in input_texts
+
+    def test_default_count_limit_is_50(self, db_session):
+        """デフォルトの保存件数上限は 50 件"""
+        from services.history_service import _get_history_limit
+        assert _get_history_limit(db_session) == 50
+
+    def test_count_limit_reads_from_settings(self, db_session):
+        from services.history_service import _get_history_limit
+        from models import Settings
+        db_session.add(Settings(key="history_limit", value="10"))
+        db_session.flush()
+        assert _get_history_limit(db_session) == 10
+
+    def test_count_limit_handles_invalid_setting(self, db_session):
+        from services.history_service import _get_history_limit
+        from models import Settings
+        db_session.add(Settings(key="history_limit", value="not-a-number"))
+        db_session.flush()
+        assert _get_history_limit(db_session) == 50
