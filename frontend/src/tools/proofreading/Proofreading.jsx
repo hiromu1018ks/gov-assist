@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { loadSettings } from '../../utils/storage';
-import { apiPost } from '../../api/client';
+import { apiPost, apiPostBlob } from '../../api/client';
 import { preprocessText } from './preprocess';
 import InputArea from './InputArea';
 import OptionPanel from './OptionPanel';
@@ -13,6 +13,8 @@ function Proofreading() {
   const [error, setError] = useState(null);
   const [lastParams, setLastParams] = useState(null);
   const [clearKey, setClearKey] = useState(0);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const callProofreadApi = useCallback(async (text, documentType, model) => {
     setIsSubmitting(true);
@@ -56,10 +58,59 @@ function Proofreading() {
     setResult(null);
     setError(null);
     setLastParams(null);
+    setCopySuccess(false);
+    setSaveSuccess(false);
     setClearKey((k) => k + 1);
   }, []);
 
+  const handleCopy = useCallback(async () => {
+    if (!result?.corrected_text) return;
+    try {
+      await navigator.clipboard.writeText(result.corrected_text);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      setError('クリップボードへのコピーに失敗しました。');
+    }
+  }, [result]);
+
+  const handleDownload = useCallback(async () => {
+    if (!result?.corrected_text) return;
+    try {
+      const blob = await apiPostBlob('/api/export/docx', {
+        corrected_text: result.corrected_text,
+        document_type: lastParams?.documentType || 'official',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '校正済み文書.docx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Word ファイルのダウンロードに失敗しました。');
+    }
+  }, [result, lastParams]);
+
+  const handleSaveHistory = useCallback(async () => {
+    if (!result || !lastParams) return;
+    try {
+      await apiPost('/api/history', {
+        input_text: lastParams.rawText,
+        result,
+        model: lastParams.model,
+        document_type: lastParams.documentType,
+      });
+      setSaveSuccess(true);
+    } catch {
+      setError('履歴への保存に失敗しました。');
+    }
+  }, [result, lastParams]);
+
   const hasContent = result || error;
+  const showActions = result && result.status !== 'error' && result.corrected_text;
 
   return (
     <div>
@@ -89,6 +140,19 @@ function Proofreading() {
       <ResultView result={result} onRetry={handleRetry} />
       {hasContent && (
         <div className="action-bar mt-md">
+          {showActions && (
+            <>
+              <button className="btn btn--secondary" onClick={handleCopy} type="button">
+                {copySuccess ? 'コピーしました' : '校正済みテキストをコピー'}
+              </button>
+              <button className="btn btn--secondary" onClick={handleDownload} type="button">
+                Word でダウンロード (.docx)
+              </button>
+              <button className="btn btn--secondary" onClick={handleSaveHistory} type="button" disabled={saveSuccess}>
+                {saveSuccess ? '保存しました' : '履歴に保存'}
+              </button>
+            </>
+          )}
           <button className="btn btn--secondary" onClick={handleClear} type="button">
             クリア
           </button>

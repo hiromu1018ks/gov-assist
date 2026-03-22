@@ -26,10 +26,11 @@ vi.mock('./fileExtractor', () => ({
   extractText: vi.fn(),
 }));
 
-import { apiPost } from '../../api/client';
+import { apiPost, apiPostBlob } from '../../api/client';
 import { preprocessText } from './preprocess';
 
 const mockApiPost = vi.mocked(apiPost);
+const mockApiPostBlob = vi.mocked(apiPostBlob);
 const mockPreprocessText = vi.mocked(preprocessText);
 
 // --- Fixtures ---
@@ -79,6 +80,7 @@ describe('Proofreading', () => {
     vi.restoreAllMocks();
     mockApiPost.mockReset();
     mockApiPost.mockResolvedValue(SUCCESS_RESPONSE);
+    mockApiPostBlob.mockReset();
     mockPreprocessText.mockReset();
     mockPreprocessText.mockImplementation((text) => ({ text: text.trim(), error: null }));
     localStorage.clear();
@@ -253,5 +255,203 @@ describe('Proofreading', () => {
       expect(screen.getByText('1件の修正を行いました。')).toBeInTheDocument();
     });
     expect(mockApiPost).toHaveBeenCalledTimes(3);
+  });
+
+  // --- Action buttons ---
+
+  it('shows copy, download, save buttons after successful result', async () => {
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '校正済みテキストをコピー' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Word.*ダウンロード/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '履歴に保存' })).toBeInTheDocument();
+  });
+
+  it('does not show copy/download/save buttons when result has error status', async () => {
+    const errorResponse = { ...SUCCESS_RESPONSE, status: 'error', status_reason: 'parse_fallback', corrected_text: '', diffs: [], corrections: [] };
+    mockApiPost.mockResolvedValue(errorResponse);
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByText(/校正結果を取得できませんでした/)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: '校正済みテキストをコピー' })).not.toBeInTheDocument();
+  });
+
+  // --- Copy ---
+
+  it('copies corrected_text to clipboard on copy click', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    const origDesc = Object.getOwnPropertyDescriptor(window, 'navigator');
+    Object.defineProperty(window, 'navigator', {
+      get() { return { ...origDesc.get.call(window), clipboard: { writeText: writeTextMock } }; },
+      configurable: true,
+    });
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '校正済みテキストをコピー' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '校正済みテキストをコピー' }));
+
+    expect(writeTextMock).toHaveBeenCalledWith('校正済みテキストです。');
+    await waitFor(() => {
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error when clipboard copy fails', async () => {
+    const origDesc = Object.getOwnPropertyDescriptor(window, 'navigator');
+    Object.defineProperty(window, 'navigator', {
+      get() { return { ...origDesc.get.call(window), clipboard: { writeText: vi.fn().mockRejectedValue(new Error('Denied')) } }; },
+      configurable: true,
+    });
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '校正済みテキストをコピー' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '校正済みテキストをコピー' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('クリップボードへのコピーに失敗しました。')).toBeInTheDocument();
+    });
+  });
+
+  // --- Download ---
+
+  it('downloads docx via apiPostBlob', async () => {
+    const blob = new Blob(['docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    mockApiPostBlob.mockResolvedValue(blob);
+
+    // Mock URL.createObjectURL and DOM for download link
+    const mockUrl = 'blob:http://localhost/test';
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockUrl);
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const clickMock = vi.fn();
+    const mockAnchor = { href: '', download: '', click: clickMock, style: {} };
+    const originalCreateElement = document.createElement.bind(document);
+    const originalAppendChild = document.body.appendChild.bind(document.body);
+    const originalRemoveChild = document.body.removeChild.bind(document.body);
+    vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+      if (tagName === 'a') return mockAnchor;
+      return originalCreateElement(tagName);
+    });
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+      if (node === mockAnchor) return mockAnchor;
+      return originalAppendChild(node);
+    });
+    vi.spyOn(document.body, 'removeChild').mockImplementation((node) => {
+      if (node === mockAnchor) return mockAnchor;
+      return originalRemoveChild(node);
+    });
+
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Word.*ダウンロード/ })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Word.*ダウンロード/ }));
+
+    expect(mockApiPostBlob).toHaveBeenCalledWith('/api/export/docx', {
+      corrected_text: '校正済みテキストです。',
+      document_type: 'official',
+    });
+    expect(clickMock).toHaveBeenCalled();
+  });
+
+  it('shows error when download fails', async () => {
+    mockApiPostBlob.mockRejectedValue(new Error('サーバーエラー'));
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Word.*ダウンロード/ })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Word.*ダウンロード/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Word ファイルのダウンロードに失敗しました。')).toBeInTheDocument();
+    });
+  });
+
+  // --- Save to history ---
+
+  it('saves raw text (not preprocessed) to history via apiPost', async () => {
+    mockApiPost.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockApiPost.mockResolvedValueOnce({ id: 1, message: '保存しました' });
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '履歴に保存' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '履歴に保存' }));
+
+    // Verify raw text is sent as input_text (the text the user typed)
+    expect(mockApiPost).toHaveBeenCalledWith('/api/history', expect.objectContaining({
+      input_text: 'テストテキスト',
+      model: 'kimi-k2.5',
+      document_type: 'official',
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText('保存しました')).toBeInTheDocument();
+    });
+  });
+
+  it('disables save button after successful save', async () => {
+    mockApiPost.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockApiPost.mockResolvedValueOnce({ id: 1, message: '保存しました' });
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '履歴に保存' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '履歴に保存' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '保存しました' })).toBeDisabled();
+    });
+  });
+
+  it('shows error when save fails', async () => {
+    mockApiPost.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockApiPost.mockRejectedValueOnce(new Error('DB エラー'));
+    const { submitText } = setup();
+
+    await submitText();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '履歴に保存' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '履歴に保存' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('履歴への保存に失敗しました。')).toBeInTheDocument();
+    });
   });
 });
