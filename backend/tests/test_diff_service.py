@@ -608,3 +608,101 @@ class TestMatchCorrections:
         ]
         _match_corrections(diffs, corrections, "ABC")
         assert diffs[0]["reason"] is None
+
+
+class TestDetectLargeRewrite:
+    """§4.4 ステップ10: 大幅書き換え検知"""
+
+    @staticmethod
+    def _b(type_str: str, text: str, start: int = 0) -> dict:
+        type_map = {
+            "equal": DiffType.EQUAL,
+            "delete": DiffType.DELETE,
+            "insert": DiffType.INSERT,
+        }
+        return {"type": type_map[type_str], "text": text, "start": start}
+
+    def test_normal_change_no_warning(self):
+        """10% change → no warning."""
+        diffs = [
+            self._b("equal", "ABCDEFGHIJ"),  # 10 chars
+            self._b("delete", "K"),           # 1 char changed
+        ]
+        warnings = _detect_large_rewrite(diffs, input_length=11)
+        assert warnings == []
+
+    def test_large_rewrite_warning(self):
+        """50% total change + 40% consecutive → warning."""
+        diffs = [
+            self._b("delete", "ABCDE"),  # 5 chars
+            self._b("insert", "XYZWT"),  # 5 chars
+            self._b("equal", "FGHIJ"),   # 5 chars
+        ]
+        warnings = _detect_large_rewrite(diffs, input_length=10)
+        assert warnings == ["large_rewrite"]
+
+    def test_many_small_changes_no_warning(self):
+        """40% total but only 5% consecutive → no warning (AND condition)."""
+        diffs = [
+            self._b("equal", "AA"),
+            self._b("delete", "B"),
+            self._b("insert", "X"),
+            self._b("equal", "AA"),
+            self._b("delete", "B"),
+            self._b("insert", "X"),
+            self._b("equal", "AA"),
+            self._b("delete", "B"),
+            self._b("insert", "X"),
+            self._b("equal", "AA"),
+        ]
+        # Total changed: 6 chars out of 14 = 42.8%
+        # Max consecutive change: 2 chars (delete+insert) out of 14 = 14.3%
+        # 42.8% > 0.3 AND 14.3% < 0.3 → no warning
+        warnings = _detect_large_rewrite(diffs, input_length=14)
+        assert warnings == []
+
+    def test_exactly_at_threshold(self):
+        """60% change and 60% consecutive → warning (well above 30%)."""
+        diffs = [
+            self._b("delete", "AAA"),  # 3 chars
+            self._b("insert", "BBB"),  # 3 chars
+            self._b("equal", "BBBBBB"),  # 6 chars
+        ]
+        # changed = 6/10 = 60% > 30%, consecutive = 6/10 = 60% > 30%
+        warnings = _detect_large_rewrite(diffs, input_length=10)
+        assert warnings == ["large_rewrite"]
+
+    def test_empty_diffs(self):
+        warnings = _detect_large_rewrite([], input_length=100)
+        assert warnings == []
+
+    def test_only_equals(self):
+        diffs = [self._b("equal", "ABCDEF")]
+        warnings = _detect_large_rewrite(diffs, input_length=6)
+        assert warnings == []
+
+    def test_change_rate_just_below_threshold(self):
+        """25% change → no warning regardless of consecutive rate."""
+        diffs = [
+            self._b("equal", "AAA"),
+            self._b("delete", "B"),
+            self._b("insert", "X"),
+            self._b("equal", "AAA"),
+        ]
+        # changed = 2/8 = 25% < 30% → no warning regardless
+        warnings = _detect_large_rewrite(diffs, input_length=8)
+        assert warnings == []
+
+    def test_exactly_30_percent_no_warning(self):
+        """Exactly 30% both conditions → no warning (strict >, not >=).
+
+        Fixed from plan: the plan's test data had 6/10 = 60% (not 30%).
+        Corrected to use only a DELETE of 3 chars (no INSERT) with input_length=10.
+        """
+        diffs = [
+            self._b("delete", "ABC"),   # 3 chars
+            self._b("equal", "WWWWWWW"),  # 7 chars
+        ]
+        # changed = 3/10 = 30% (NOT > 30%), consecutive = 3/10 = 30% (NOT > 30%)
+        warnings = _detect_large_rewrite(diffs, input_length=10)
+        assert warnings == []

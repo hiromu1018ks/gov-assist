@@ -391,9 +391,41 @@ def _match_corrections(
 
 
 def _detect_large_rewrite(
-    text1: str,
-    text2: str,
-    diffs: list[tuple[int, str]],
-) -> bool:
-    """Detect if text was largely rewritten (Task 7)."""
-    raise NotImplementedError("_detect_large_rewrite will be implemented in a later task")
+    diffs: list[dict],
+    input_length: int,
+) -> list[str]:
+    """Detect large-scale text rewriting.
+
+    §4.4 ステップ10: 大幅書き換え検知
+    - 変更文字数 = delete + insert ブロックの文字数合計（equal は除外）
+    - 条件: (変更率 > 30%) AND (最大連続変更ブロック長 / 入力長 > 30%)
+    - AND 条件により、改行正規化等の細かい修正積み上がりによる誤検知を防止
+
+    Returns list of warning strings (empty if no large rewrite).
+    """
+    if input_length == 0 or not diffs:
+        return []
+
+    # Calculate total changed characters
+    changed_chars = sum(
+        len(d["text"]) for d in diffs if d["type"] != DiffType.EQUAL
+    )
+    change_rate = changed_chars / input_length
+
+    # Find max consecutive change block length
+    max_consecutive = 0
+    current_consecutive = 0
+    for d in diffs:
+        if d["type"] != DiffType.EQUAL:
+            current_consecutive += len(d["text"])
+        else:
+            max_consecutive = max(max_consecutive, current_consecutive)
+            current_consecutive = 0
+    max_consecutive = max(max_consecutive, current_consecutive)
+
+    consecutive_rate = max_consecutive / input_length
+
+    if change_rate > LARGE_REWRITE_THRESHOLD and consecutive_rate > LARGE_REWRITE_THRESHOLD:
+        return ["large_rewrite"]
+
+    return []
