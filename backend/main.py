@@ -144,6 +144,9 @@ def create_app(enable_origin_check: bool = True) -> FastAPI:
     from routers.proofread import router as proofread_router
     application.include_router(proofread_router)
 
+    from routers.history import router as history_router
+    application.include_router(history_router)
+
     return application
 
 

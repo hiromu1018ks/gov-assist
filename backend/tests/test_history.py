@@ -458,3 +458,247 @@ class TestSearchHistory:
         _create_history_via_service(db_session, input_text="文書1")
         items, total = get_history_list(db_session, q=None)
         assert total == 1
+
+
+class TestGetHistoryRouter:
+    """GET /api/history endpoint tests."""
+
+    def test_returns_200_with_auth(self, client, auth_headers):
+        resp = client.get("/api/history", headers=auth_headers)
+        assert resp.status_code == 200
+
+    def test_returns_401_without_auth(self, client):
+        resp = client.get("/api/history")
+        assert resp.status_code == 401
+
+    def test_returns_empty_list(self, client, auth_headers):
+        resp = client.get("/api/history", headers=auth_headers)
+        data = resp.json()
+        assert data["total"] == 0
+        assert data["items"] == []
+
+    def test_returns_items_with_preview(self, client, auth_headers, db_session):
+        _create_history_via_service(db_session, input_text="あ" * 100)
+        resp = client.get("/api/history", headers=auth_headers)
+        data = resp.json()
+        assert data["total"] == 1
+        assert len(data["items"][0]["preview"]) == 50
+
+    def test_query_param_q_filters(self, client, auth_headers, db_session):
+        _create_history_via_service(db_session, input_text="申請書を提出")
+        _create_history_via_service(db_session, input_text="会議の議事録")
+        resp = client.get("/api/history?q=申請書", headers=auth_headers)
+        data = resp.json()
+        assert data["total"] == 1
+
+    def test_query_param_document_type_filters(self, client, auth_headers, db_session):
+        _create_history_via_service(db_session, document_type="email")
+        _create_history_via_service(db_session, document_type="official")
+        resp = client.get("/api/history?document_type=official", headers=auth_headers)
+        data = resp.json()
+        assert data["total"] == 1
+
+    def test_query_param_limit(self, client, auth_headers, db_session):
+        for i in range(5):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        resp = client.get("/api/history?limit=2", headers=auth_headers)
+        data = resp.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 5
+
+    def test_query_param_offset(self, client, auth_headers, db_session):
+        for i in range(5):
+            _create_history_via_service(db_session, input_text=f"文書{i}")
+        resp = client.get("/api/history?limit=2&offset=3", headers=auth_headers)
+        data = resp.json()
+        assert len(data["items"]) == 2
+
+    def test_query_param_date_range(self, client, auth_headers, db_session):
+        from datetime import datetime, timezone
+        h = _create_history_via_service(db_session)
+        h.created_at = datetime(2026, 3, 15, tzinfo=timezone.utc)
+        db_session.flush()
+        resp = client.get(
+            "/api/history?date_from=2026-03-01T00:00:00Z&date_to=2026-03-20T00:00:00Z",
+            headers=auth_headers,
+        )
+        data = resp.json()
+        assert data["total"] == 1
+
+
+class TestPostHistoryRouter:
+    """POST /api/history endpoint tests."""
+
+    def test_returns_201_with_auth(self, client, auth_headers):
+        resp = client.post(
+            "/api/history",
+            headers=auth_headers,
+            json={
+                "input_text": "テスト文書です。",
+                "result": {
+                    "request_id": "req-1",
+                    "status": "success",
+                    "corrected_text": "校正済みテキストです。",
+                    "summary": "1件修正",
+                },
+                "model": "kimi-k2.5",
+                "document_type": "email",
+            },
+        )
+        assert resp.status_code == 201
+
+    def test_returns_401_without_auth(self, client):
+        resp = client.post("/api/history", json={"input_text": "test"})
+        assert resp.status_code == 401
+
+    def test_returns_created_record(self, client, auth_headers):
+        resp = client.post(
+            "/api/history",
+            headers=auth_headers,
+            json={
+                "input_text": "テスト",
+                "result": {
+                    "request_id": "req-1",
+                    "status": "success",
+                    "corrected_text": "校正済み",
+                },
+                "model": "kimi-k2.5",
+                "document_type": "report",
+            },
+        )
+        data = resp.json()
+        assert "id" in data
+        assert data["input_text"] == "テスト"
+        assert data["document_type"] == "report"
+
+    def test_validates_input_text_min_length(self, client, auth_headers):
+        resp = client.post(
+            "/api/history",
+            headers=auth_headers,
+            json={
+                "input_text": "",
+                "result": {"request_id": "r", "status": "success", "corrected_text": "x"},
+                "model": "kimi-k2.5",
+                "document_type": "email",
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_validates_input_text_max_length(self, client, auth_headers):
+        resp = client.post(
+            "/api/history",
+            headers=auth_headers,
+            json={
+                "input_text": "あ" * 8001,
+                "result": {"request_id": "r", "status": "success", "corrected_text": "x"},
+                "model": "kimi-k2.5",
+                "document_type": "email",
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_saves_optional_memo(self, client, auth_headers):
+        resp = client.post(
+            "/api/history",
+            headers=auth_headers,
+            json={
+                "input_text": "テスト",
+                "result": {"request_id": "r", "status": "success", "corrected_text": "校正"},
+                "model": "kimi-k2.5",
+                "document_type": "email",
+                "memo": "メモです",
+            },
+        )
+        data = resp.json()
+        assert data["memo"] == "メモです"
+
+
+class TestGetHistoryByIdRouter:
+    """GET /api/history/{id} endpoint tests."""
+
+    def test_returns_200_with_auth(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session)
+        resp = client.get(f"/api/history/{record.id}", headers=auth_headers)
+        assert resp.status_code == 200
+
+    def test_returns_404_for_nonexistent(self, client, auth_headers):
+        resp = client.get("/api/history/9999", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_returns_detail_with_result(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session)
+        resp = client.get(f"/api/history/{record.id}", headers=auth_headers)
+        data = resp.json()
+        assert data["id"] == record.id
+        assert data["input_text"] == "テスト入力文書です。"
+        assert "result" in data
+        assert data["result"]["corrected_text"] == "校正済みテキスト"
+
+
+class TestPatchHistoryRouter:
+    """PATCH /api/history/{id} endpoint tests."""
+
+    def test_updates_memo(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session)
+        resp = client.patch(
+            f"/api/history/{record.id}",
+            json={"memo": "更新メモ"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["memo"] == "更新メモ"
+
+    def test_clears_memo_with_null(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session, memo="元メモ")
+        resp = client.patch(
+            f"/api/history/{record.id}",
+            json={"memo": None},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["memo"] is None
+
+    def test_returns_404_for_nonexistent(self, client, auth_headers):
+        resp = client.patch("/api/history/9999", json={"memo": "x"}, headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_returns_401_without_auth(self, client, db_session):
+        record = _create_history_via_service(db_session)
+        resp = client.patch(f"/api/history/{record.id}", json={"memo": "x"})
+        assert resp.status_code == 401
+
+
+class TestDeleteHistoryRouter:
+    """DELETE /api/history/{id} and DELETE /api/history endpoint tests."""
+
+    def test_delete_single_returns_200(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session)
+        resp = client.delete(f"/api/history/{record.id}", headers=auth_headers)
+        assert resp.status_code == 200
+
+    def test_delete_single_removes_record(self, client, auth_headers, db_session):
+        record = _create_history_via_service(db_session)
+        client.delete(f"/api/history/{record.id}", headers=auth_headers)
+        resp = client.get(f"/api/history/{record.id}", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_delete_single_404_nonexistent(self, client, auth_headers):
+        resp = client.delete("/api/history/9999", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_delete_all_returns_200(self, client, auth_headers, db_session):
+        for i in range(3):
+            _create_history_via_service(db_session)
+        resp = client.delete("/api/history", headers=auth_headers)
+        assert resp.status_code == 200
+
+    def test_delete_all_removes_everything(self, client, auth_headers, db_session):
+        for i in range(3):
+            _create_history_via_service(db_session)
+        client.delete("/api/history", headers=auth_headers)
+        resp = client.get("/api/history", headers=auth_headers)
+        assert resp.json()["total"] == 0
+
+    def test_delete_returns_401_without_auth(self, client):
+        resp = client.delete("/api/history")
+        assert resp.status_code == 401
