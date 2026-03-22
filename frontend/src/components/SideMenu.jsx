@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { path: '/', label: 'AI 文書校正', icon: '📝' },
+  { path: '/history', label: '校正履歴', icon: '📋' },
   { path: null, label: '文書要約・翻訳', icon: '📄' },
   { path: null, label: 'PDF 加工', icon: '🗂' },
   { path: null, label: 'AI チャット', icon: '💬' },

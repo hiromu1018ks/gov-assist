@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import WarningModal from './components/WarningModal';
 import LoginForm from './components/LoginForm';
 import Proofreading from './tools/proofreading/Proofreading';
+import History from './tools/history/History';
 import Settings from './tools/settings/Settings';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
             <Route path="/" element={<ProtectedRoute><Proofreading /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
