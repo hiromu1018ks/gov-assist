@@ -20,13 +20,7 @@ html {
 }
 
 body {
-  font-family:
-    'Hiragino Sans',
-    'Hiragino Kaku Gothic ProN',
-    'Noto Sans JP',
-    'Yu Gothic',
-    'Meiryo',
-    sans-serif;
+  font-family: 'Share Tech Mono', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', 'Meiryo', monospace;
   color: var(--color-text);
   background-color: var(--color-bg);
 }
@@ -65,39 +59,51 @@ select {
 /* --- CSS Custom Properties --- */
 
 :root {
+  /* Font */
+  --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+  --font-body: 'Share Tech Mono', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', monospace;
+
   /* Text colors */
-  --color-text: #333;
-  --color-text-secondary: #666;
-  --color-text-muted: #999;
+  --color-text: #c0ffd8;
+  --color-text-bright: #00ff41;
+  --color-text-secondary: #00ff41;  /* ALIAS: removed in Task 5 after all refs updated */
+  --color-text-muted: #5a8a62;
 
   /* Background colors */
-  --color-bg: #f5f5f5;
-  --color-bg-white: #fff;
-  --color-bg-hover: #e8e8e8;
-  --color-bg-active: #ddd;
+  --color-bg: #000000;
+  --color-bg-secondary: #0a0a0a;
+  --color-bg-white: #0a0a0a;  /* ALIAS: removed in Task 5 after all refs updated */
+  --color-bg-elevated: #0d1117;
+  --color-bg-hover: rgba(0, 255, 65, 0.08);
+  --color-bg-active: rgba(0, 255, 65, 0.15);
 
   /* Border */
-  --color-border: #ddd;
-  --color-border-focus: #4a90d9;
+  --color-border: rgba(0, 255, 65, 0.2);
+  --color-border-focus: #00ff41;
 
   /* Accent */
-  --color-primary: #4a90d9;
-  --color-primary-hover: #357abd;
-  --color-primary-active: #2a6aad;
-  --color-danger: #d94a4a;
-  --color-danger-hover: #bd3535;
-  --color-warning: #f0ad4e;
-  --color-success: #5cb85c;
+  --color-primary: #00ff41;
+  --color-primary-hover: #33ff66;
+  --color-primary-active: #00cc33;
+  --color-accent: #00ffff;
+  --color-danger: #ff0040;
+  --color-danger-hover: #ff3366;
+  --color-warning: #ffaa00;
+  --color-success: #39ff14;
+  --color-info: #00ffff;
 
-  /* Diff colors (§3.3.4) */
-  --color-diff-delete-bg: #ffcccc;
-  --color-diff-insert-bg: #ccffcc;
+  /* Diff colors */
+  --color-diff-delete-bg: rgba(255, 0, 64, 0.25);
+  --color-diff-delete-text: #ff2244;
+  --color-diff-insert-bg: rgba(0, 255, 65, 0.25);
+  --color-diff-insert-text: #44ff88;
 
-  /* Layout dimensions (§3.1) */
-  --header-height: 48px;
+  /* Layout dimensions */
+  --header-height: 32px;
   --sidebar-width: 200px;
+  --status-bar-height: 28px;
 
-  /* Spacing scale */
+  /* Spacing scale (unchanged) */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
@@ -105,22 +111,29 @@ select {
   --spacing-xl: 32px;
 
   /* Typography */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
+  --font-size-xs: 0.7rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.85rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
 
-  /* Border radius */
-  --radius-sm: 3px;
-  --radius: 5px;
-  --radius-lg: 8px;
+  /* Border radius — sharp for hacker feel */
+  --radius-sm: 1px;
+  --radius: 2px;
+  --radius-lg: 3px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  /* Shadows — glow-based */
+  --shadow-sm: 0 0 4px rgba(0, 255, 65, 0.1);
+  --shadow: 0 0 6px rgba(0, 255, 65, 0.15);
+  --shadow-lg: 0 0 12px rgba(0, 255, 65, 0.2);
+
+  /* Glow tokens */
+  --glow-primary: 0 0 8px #00ff41;
+  --glow-accent: 0 0 8px #00ffff;
+  --glow-danger: 0 0 8px #ff0040;
+  --glow-success: 0 0 8px #39ff14;
+  --glow-warning: 0 0 8px #ffaa00;
 
   /* Transitions */
   --transition-fast: 150ms ease;
