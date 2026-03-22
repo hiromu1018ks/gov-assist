@@ -6,7 +6,6 @@ import { MemoryRouter } from 'react-router-dom';
 // Mock useAuth — App is always rendered as authenticated in these layout tests
 vi.mock('./context/AuthContext', () => ({
   useAuth: vi.fn(() => ({ isAuthenticated: true, isLoading: false, login: vi.fn(), logout: vi.fn() })),
-  AuthProvider: ({ children }) => children,
 }));
 
 // Mock storage utility
