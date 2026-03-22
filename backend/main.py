@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 from database import init_db, check_fts5_ngram_support, init_fts5, _engine
-from dependencies import verify_token, get_app_token
+# from dependencies import verify_token, get_app_token  # Auth disabled for localhost MVP
 
 logger = logging.getLogger("govassist")
 
