@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import InputArea from './InputArea';
 import OptionPanel from './OptionPanel';
+import ResultView from './ResultView';
 
 function Proofreading() {
   const [options, setOptions] = useState(null);
   const [isSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
 
   const handleSubmit = (text, documentType) => {
     // Task 19 will implement the full proofreading flow:
@@ -22,6 +24,7 @@ function Proofreading() {
       <div className="mt-md">
         <OptionPanel onChange={setOptions} disabled={isSubmitting} />
       </div>
+      <ResultView result={result} />
     </div>
   );
 }
