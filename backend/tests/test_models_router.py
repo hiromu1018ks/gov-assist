@@ -32,8 +32,8 @@ class TestGetModels:
             headers={"Authorization": "Bearer test-secret-token"},
         )
         models = resp.json()["models"]
-        kimi = next(m for m in models if m["model_id"] == "kimi-k2.5")
-        assert kimi["display_name"] == "Kimi K2.5"
+        kimi = next(m for m in models if m["model_id"] == "gpt-oss-120b")
+        assert kimi["display_name"] == "GPT-OSS 120B"
         assert kimi["max_tokens"] == 4096
         assert kimi["temperature"] == 0.3
         assert kimi["max_input_chars"] == 8000

@@ -32,7 +32,7 @@ class TestProofreadLogging:
             with caplog.at_level(logging.ERROR, logger="govassist"):
                 resp = client.post(
                     "/api/proofread",
-                    json={"request_id": "log-test-001", "text": "テスト", "document_type": "official", "model": "kimi-k2.5"},
+                    json={"request_id": "log-test-001", "text": "テスト", "document_type": "official", "model": "gpt-oss-120b"},
                     headers=AUTH_HEADERS,
                 )
 
@@ -54,7 +54,7 @@ class TestProofreadLogging:
             with caplog.at_level(logging.ERROR, logger="govassist"):
                 resp = client.post(
                     "/api/proofread",
-                    json={"request_id": "log-test-002", "text": "テスト", "document_type": "official", "model": "kimi-k2.5"},
+                    json={"request_id": "log-test-002", "text": "テスト", "document_type": "official", "model": "gpt-oss-120b"},
                     headers=AUTH_HEADERS,
                 )
 

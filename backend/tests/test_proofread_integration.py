@@ -24,13 +24,13 @@ VALID_REQUEST = {
         "legal": False,
         "readability": True,
     },
-    "model": "kimi-k2.5",
+    "model": "gpt-oss-120b",
 }
 
 AUTH_HEADERS = {"Authorization": "Bearer test-secret-token"}
 
 MOCK_MODEL_CONFIG = ModelConfig(
-    display_name="Kimi K2.5",
+    display_name="GPT-OSS 120B",
     max_tokens=4096,
     temperature=0.3,
     max_input_chars=8000,
@@ -113,7 +113,7 @@ class TestValidationEdgeCases:
             "request_id": "test-opt-001",
             "text": "テスト",
             "document_type": "official",
-            "model": "kimi-k2.5",
+            "model": "gpt-oss-120b",
         }
         resp = client.post("/api/proofread", json=request_no_options, headers=AUTH_HEADERS)
         # Should not be 422 for missing options (Pydantic applies defaults)

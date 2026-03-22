@@ -15,7 +15,7 @@ class TestHistorySchemas:
                 status="success",
                 corrected_text="校正済み",
             ),
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             document_type="email",
         )
         assert req.input_text == "テスト文書"
@@ -28,7 +28,7 @@ class TestHistorySchemas:
                 result=ProofreadResponse(
                     request_id="req-1", status="success", corrected_text="x",
                 ),
-                model="kimi-k2.5",
+                model="gpt-oss-120b",
                 document_type="email",
             )
 
@@ -40,7 +40,7 @@ class TestHistorySchemas:
                 result=ProofreadResponse(
                     request_id="req-1", status="success", corrected_text="x",
                 ),
-                model="kimi-k2.5",
+                model="gpt-oss-120b",
                 document_type="email",
             )
 
@@ -51,7 +51,7 @@ class TestHistorySchemas:
             result=ProofreadResponse(
                 request_id="req-1", status="success", corrected_text="校正済み",
             ),
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             document_type="email",
         )
         assert req.memo is None
@@ -73,7 +73,7 @@ class TestHistorySchemas:
             id=1,
             preview="あ" * 100,
             document_type="email",
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             created_at=datetime.now(timezone.utc),
             truncated=False,
             memo=None,
@@ -89,7 +89,7 @@ class TestHistorySchemas:
             result=ProofreadResponse(
                 request_id="req-1", status="success", corrected_text="校正済み",
             ),
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             document_type="email",
             created_at=datetime.now(timezone.utc),
             truncated=False,
@@ -169,7 +169,7 @@ def _create_history_via_service(db_session, **overrides):
         db=db_session,
         input_text="テスト入力文書です。",
         result=_make_proofread_response(),
-        model="kimi-k2.5",
+        model="gpt-oss-120b",
         document_type="email",
         memo=None,
     )
@@ -191,7 +191,7 @@ class TestCreateHistory:
         from services.history_service import create_history
         record = _create_history_via_service(db_session)
         assert record.id is not None
-        assert record.model == "kimi-k2.5"
+        assert record.model == "gpt-oss-120b"
 
     def test_stores_result_json_as_string(self, db_session):
         from services.history_service import create_history, get_history_by_id
@@ -542,7 +542,7 @@ class TestPostHistoryRouter:
                     "corrected_text": "校正済みテキストです。",
                     "summary": "1件修正",
                 },
-                "model": "kimi-k2.5",
+                "model": "gpt-oss-120b",
                 "document_type": "email",
             },
         )
@@ -564,7 +564,7 @@ class TestPostHistoryRouter:
                     "status": "success",
                     "corrected_text": "校正済み",
                 },
-                "model": "kimi-k2.5",
+                "model": "gpt-oss-120b",
                 "document_type": "report",
             },
         )
@@ -580,7 +580,7 @@ class TestPostHistoryRouter:
             json={
                 "input_text": "",
                 "result": {"request_id": "r", "status": "success", "corrected_text": "x"},
-                "model": "kimi-k2.5",
+                "model": "gpt-oss-120b",
                 "document_type": "email",
             },
         )
@@ -593,7 +593,7 @@ class TestPostHistoryRouter:
             json={
                 "input_text": "あ" * 8001,
                 "result": {"request_id": "r", "status": "success", "corrected_text": "x"},
-                "model": "kimi-k2.5",
+                "model": "gpt-oss-120b",
                 "document_type": "email",
             },
         )
@@ -606,7 +606,7 @@ class TestPostHistoryRouter:
             json={
                 "input_text": "テスト",
                 "result": {"request_id": "r", "status": "success", "corrected_text": "校正"},
-                "model": "kimi-k2.5",
+                "model": "gpt-oss-120b",
                 "document_type": "email",
                 "memo": "メモです",
             },

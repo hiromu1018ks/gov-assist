@@ -41,7 +41,7 @@ class ProofreadRequest(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
     document_type: DocumentType
     options: ProofreadOptions = ProofreadOptions()
-    model: str = "kimi-k2.5"
+    model: str = "gpt-oss-120b"
 
 
 class CorrectionItem(BaseModel):

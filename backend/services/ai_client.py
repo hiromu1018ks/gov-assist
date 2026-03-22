@@ -22,8 +22,8 @@ class ModelConfig:
 
 # §4.2 モデル設定テーブル
 MODEL_CONFIGS: dict[str, ModelConfig] = {
-    "kimi-k2.5": ModelConfig(
-        display_name="Kimi K2.5",
+    "gpt-oss-120b": ModelConfig(
+        display_name="GPT-OSS 120B",
         max_tokens=4096,
         temperature=0.3,
         max_input_chars=8000,
@@ -66,21 +66,26 @@ class AIClient:
         max_tokens: int,
         temperature: float,
         request_id: str,
+        json_forced: bool = False,
     ) -> str:
         """Call AI engine and return response text.
 
         Raises AIClientError on failure.
         """
+        kwargs: dict = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if json_forced:
+            kwargs["response_format"] = {"type": "json_object"}
+
         try:
-            response = await self._client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
+            response = await self._client.chat.completions.create(**kwargs)
             if not response.choices:
                 logger.error(
                     "AI API returned empty choices: request_id=%s model=%s",

@@ -25,7 +25,7 @@ def _create_history(client, input_text, doc_type="official", memo=None):
     body = {
         "input_text": input_text,
         "result": result,
-        "model": "kimi-k2.5",
+        "model": "gpt-oss-120b",
         "document_type": doc_type,
     }
     if memo is not None:

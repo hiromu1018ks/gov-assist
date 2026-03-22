@@ -390,7 +390,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=raw,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-001",
@@ -414,7 +414,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-002",
@@ -438,7 +438,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-003",
@@ -461,7 +461,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-004",
@@ -482,7 +482,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-005",
@@ -501,7 +501,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-006",
@@ -520,7 +520,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-007",
@@ -537,7 +537,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=raw,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-008",
@@ -561,7 +561,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=raw,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-009",
@@ -581,7 +581,7 @@ class TestParseAIResponse:
             result = await parse_ai_response(
                 raw_response=bad,
                 ai_client=client,
-                model="kimi-k2.5",
+                model="gpt-oss-120b",
                 system_prompt="system",
                 user_prompt="user",
                 request_id="req-010",
@@ -603,7 +603,7 @@ class TestParseAIResponse:
         result = await parse_ai_response(
             raw_response=bad,
             ai_client=client,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             request_id="req-011",
@@ -612,7 +612,7 @@ class TestParseAIResponse:
         )
 
         call_kwargs = client.complete.call_args.kwargs
-        assert call_kwargs["model"] == "kimi-k2.5"
+        assert call_kwargs["model"] == "gpt-oss-120b"
         assert call_kwargs["max_tokens"] == 2048
         assert call_kwargs["temperature"] == 0.5
         assert call_kwargs["request_id"] == "req-011"

@@ -24,7 +24,7 @@ def test_history_model_create_and_retrieve(db_session):
     record = History(
         input_text="テスト入力",
         result_json='{"corrected_text": "テスト校正済み"}',
-        model="kimi-k2.5",
+        model="gpt-oss-120b",
         document_type="official",
         memo="テストメモ",
         truncated=False,
@@ -35,7 +35,7 @@ def test_history_model_create_and_retrieve(db_session):
     retrieved = db_session.query(History).first()
     assert retrieved is not None
     assert retrieved.input_text == "テスト入力"
-    assert retrieved.model == "kimi-k2.5"
+    assert retrieved.model == "gpt-oss-120b"
     assert retrieved.document_type == "official"
     assert retrieved.memo == "テストメモ"
     assert retrieved.truncated is False
@@ -49,7 +49,7 @@ def test_history_model_truncated_flag(db_session):
     record = History(
         input_text="A" * 8000,
         result_json='{"corrected_text": "short"}',
-        model="kimi-k2.5",
+        model="gpt-oss-120b",
         document_type="email",
         truncated=True,
     )
@@ -64,8 +64,8 @@ def test_history_model_id_is_int(db_session):
     """id カラムが自動採番の整数である"""
     from models import History
 
-    r1 = History(input_text="1", result_json="{}", model="kimi-k2.5", document_type="other")
-    r2 = History(input_text="2", result_json="{}", model="kimi-k2.5", document_type="other")
+    r1 = History(input_text="1", result_json="{}", model="gpt-oss-120b", document_type="other")
+    r2 = History(input_text="2", result_json="{}", model="gpt-oss-120b", document_type="other")
     db_session.add_all([r1, r2])
     db_session.commit()
 
@@ -82,7 +82,7 @@ def test_history_model_default_truncated_is_false(db_session):
     record = History(
         input_text="test",
         result_json="{}",
-        model="kimi-k2.5",
+        model="gpt-oss-120b",
         document_type="report",
     )
     db_session.add(record)

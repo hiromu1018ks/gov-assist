@@ -51,11 +51,11 @@ class TestProofreadRequest:
             request_id="test-uuid",
             text="テスト文章",
             document_type=DocumentType.OFFICIAL,
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
         )
         assert req.text == "テスト文章"
         assert req.document_type == DocumentType.OFFICIAL
-        assert req.model == "kimi-k2.5"
+        assert req.model == "gpt-oss-120b"
         assert req.request_id == "test-uuid"
 
     def test_default_model(self):
@@ -64,7 +64,7 @@ class TestProofreadRequest:
             text="テスト",
             document_type=DocumentType.EMAIL,
         )
-        assert req.model == "kimi-k2.5"
+        assert req.model == "gpt-oss-120b"
 
     def test_text_max_length(self):
         long_text = "あ" * 8001
@@ -217,22 +217,22 @@ class TestModelInfoResponse:
     def test_model_info_response_valid(self):
         from schemas import ModelInfoResponse
         m = ModelInfoResponse(
-            model_id="kimi-k2.5",
-            display_name="Kimi K2.5",
+            model_id="gpt-oss-120b",
+            display_name="GPT-OSS 120B",
             max_tokens=4096,
             temperature=0.3,
             max_input_chars=8000,
             json_forced=True,
         )
-        assert m.model_id == "kimi-k2.5"
-        assert m.display_name == "Kimi K2.5"
+        assert m.model_id == "gpt-oss-120b"
+        assert m.display_name == "GPT-OSS 120B"
 
     def test_models_response_list(self):
         from schemas import ModelInfoResponse, ModelsResponse
         models = ModelsResponse(models=[
             ModelInfoResponse(
-                model_id="kimi-k2.5",
-                display_name="Kimi K2.5",
+                model_id="gpt-oss-120b",
+                display_name="GPT-OSS 120B",
                 max_tokens=4096,
                 temperature=0.3,
                 max_input_chars=8000,
@@ -240,7 +240,7 @@ class TestModelInfoResponse:
             )
         ])
         assert len(models.models) == 1
-        assert models.models[0].model_id == "kimi-k2.5"
+        assert models.models[0].model_id == "gpt-oss-120b"
 
 
 class TestSettingsResponse:

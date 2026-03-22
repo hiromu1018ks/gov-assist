@@ -15,9 +15,9 @@ from services.ai_client import (
 
 class TestModelConfig:
     def test_kimi_k25_config_exists(self):
-        config = get_model_config("kimi-k2.5")
+        config = get_model_config("gpt-oss-120b")
         assert isinstance(config, ModelConfig)
-        assert config.display_name == "Kimi K2.5"
+        assert config.display_name == "GPT-OSS 120B"
         assert config.max_tokens == 4096
         assert config.temperature == 0.3
         assert config.max_input_chars == 8000
@@ -79,7 +79,7 @@ class TestComplete:
 
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         result = await client.complete(
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system prompt",
             user_prompt="user prompt",
             max_tokens=4096,
@@ -105,7 +105,7 @@ class TestComplete:
 
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         result = await client.complete(
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="system",
             user_prompt="user",
             max_tokens=4096,
@@ -127,7 +127,7 @@ class TestComplete:
 
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         await client.complete(
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             system_prompt="sys",
             user_prompt="usr",
             max_tokens=2048,
@@ -136,7 +136,7 @@ class TestComplete:
         )
 
         mock_client.chat.completions.create.assert_called_once_with(
-            model="kimi-k2.5",
+            model="gpt-oss-120b",
             messages=[
                 {"role": "system", "content": "sys"},
                 {"role": "user", "content": "usr"},
@@ -158,7 +158,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5",
+                model="gpt-oss-120b",
                 system_prompt="s",
                 user_prompt="u",
                 max_tokens=4096,
@@ -180,7 +180,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5",
+                model="gpt-oss-120b",
                 system_prompt="s",
                 user_prompt="u",
                 max_tokens=4096,
@@ -204,7 +204,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                model="gpt-oss-120b", system_prompt="s", user_prompt="u",
                 max_tokens=4096, temperature=0.3, request_id="req-timeout",
             )
         assert exc_info.value.error_code == "ai_timeout"
@@ -227,7 +227,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                model="gpt-oss-120b", system_prompt="s", user_prompt="u",
                 max_tokens=4096, temperature=0.3, request_id="req-rate",
             )
         assert exc_info.value.error_code == "ai_rate_limit"
@@ -250,7 +250,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                model="gpt-oss-120b", system_prompt="s", user_prompt="u",
                 max_tokens=4096, temperature=0.3, request_id="req-api",
             )
         assert exc_info.value.error_code == "ai_invalid_response"
@@ -269,7 +269,7 @@ class TestComplete:
         client = AIClient(api_key="test-key", base_url="https://api.test.com")
         with pytest.raises(AIClientError) as exc_info:
             await client.complete(
-                model="kimi-k2.5", system_prompt="s", user_prompt="u",
+                model="gpt-oss-120b", system_prompt="s", user_prompt="u",
                 max_tokens=4096, temperature=0.3, request_id="req-conn",
             )
         assert exc_info.value.error_code == "ai_invalid_response"

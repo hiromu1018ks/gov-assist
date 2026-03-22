@@ -78,6 +78,7 @@ async def proofread(
             max_tokens=config.max_tokens,
             temperature=config.temperature,
             request_id=request_id,
+            json_forced=config.json_forced,
         )
 
         # Parse AI response
@@ -90,6 +91,7 @@ async def proofread(
             request_id=request_id,
             max_tokens=config.max_tokens,
             temperature=config.temperature,
+            json_forced=config.json_forced,
         )
 
         # Parse complete failure → HTTP 502
