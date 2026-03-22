@@ -51,6 +51,20 @@ def get_session_local(engine=None):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def get_db():
+    """FastAPI dependency: yield a DB session.
+
+    Uses the default engine. The session is closed after the request.
+    """
+    engine = get_engine()
+    SessionLocal = get_session_local(engine)
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 def check_fts5_ngram_support() -> bool:
     """Check if SQLite FTS5 ngram tokenizer is available.
 
