@@ -1,36 +1,43 @@
-// src/App.jsx
+import { useState, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-// import { useAuth } from './context/AuthContext';  // Auth disabled for localhost MVP
 import Header from './components/Header';
 import SideMenu from './components/SideMenu';
-// import ProtectedRoute from './components/ProtectedRoute';  // Auth disabled for localhost MVP
 import WarningModal from './components/WarningModal';
-// import LoginForm from './components/LoginForm';  // Auth disabled for localhost MVP
+import BootSequence from './effects/BootSequence';
+import MatrixRain from './effects/MatrixRain';
+import useStatusMessages from './effects/useStatusMessages';
 import Proofreading from './tools/proofreading/Proofreading';
 import History from './tools/history/History';
 import Settings from './tools/settings/Settings';
 
 function App() {
-  // --- Auth disabled for localhost MVP ---
-  // To re-enable: uncomment useAuth, ProtectedRoute, LoginForm imports and
-  // restore the conditional rendering and /login route below.
-  // const { isAuthenticated } = useAuth();
+  const [bootDone, setBootDone] = useState(false);
+  const statusMessage = useStatusMessages();
+  const handleBootComplete = useCallback(() => setBootDone(true), []);
 
   return (
     <div className="app">
+      <MatrixRain />
+      {!bootDone && <BootSequence onComplete={handleBootComplete} />}
       <WarningModal />
       <Header />
       <div className="app-content">
         <SideMenu />
         <main className="main-content">
           <Routes>
-            {/* <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} /> */}
             <Route path="/" element={<Proofreading />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/history" element={<History />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+      </div>
+      <div className="system-bar">
+        <span className="system-bar__status">●</span>
+        <span>READY</span>
+        <span className="system-bar__message">{statusMessage}</span>
+        <span className="system-bar__spacer" />
+        <span className="system-bar__info">localhost:8000</span>
       </div>
     </div>
   );

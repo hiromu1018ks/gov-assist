@@ -1,5 +1,5 @@
 /* ============================================
-   layout.css — Header, Sidebar, Main Content
+   layout.css — tmux-style Panel Layout
    ============================================ */
 
 /* --- App container (full viewport) --- */
@@ -9,36 +9,73 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background-color: var(--color-bg);
 }
 
-/* --- Header (§3.1) --- */
+/* --- Top Status Bar --- */
 
-.app-header {
+.status-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: var(--header-height);
   padding: 0 var(--spacing-md);
-  background-color: var(--color-bg-white);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--color-bg-elevated);
   flex-shrink: 0;
   z-index: 100;
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.app-header__title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-text);
+.status-bar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.4), transparent);
 }
 
-.app-header__actions {
+.status-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-bright);
+  text-shadow: var(--glow-primary);
+}
+
+.status-bar__prompt {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.status-bar__version {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.status-bar__indicator {
+  color: var(--color-success);
+  text-shadow: var(--glow-success);
+}
+
+.status-bar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+}
+
+.status-bar__actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
 }
 
-/* --- Content area (sidebar + main) --- */
+/* --- Panel area (sidebar + main) --- */
 
 .app-content {
   display: flex;
@@ -46,17 +83,18 @@
   overflow: hidden;
 }
 
-/* --- Sidebar (§3.1: 200px fixed) --- */
+/* --- Left Panel (modules nav) --- */
 
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background-color: var(--color-bg-white);
+  background-color: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   flex-shrink: 0;
+  font-size: var(--font-size-sm);
 }
 
 .sidebar__nav {
@@ -69,55 +107,99 @@
   border-top: 1px solid var(--color-border);
 }
 
+.sidebar__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 2px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  text-transform: uppercase;
+}
+
 .sidebar__item {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-base);
-  color: var(--color-text);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
   user-select: none;
   border: none;
   background: none;
   width: 100%;
   text-align: left;
+  border-left: 2px solid transparent;
 }
 
 .sidebar__item:hover {
   background-color: var(--color-bg-hover);
+  color: var(--color-text);
 }
 
 .sidebar__item--active {
-  background-color: var(--color-bg-hover);
-  font-weight: 600;
-  color: var(--color-primary);
-  border-left: 3px solid var(--color-primary);
+  background-color: rgba(0, 255, 65, 0.08);
+  color: var(--color-text-bright);
+  border-left-color: var(--color-primary);
+  text-shadow: var(--glow-primary);
 }
 
 .sidebar__item--disabled {
   color: var(--color-text-muted);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.3;
 }
 
 .sidebar__item--disabled:hover {
   background-color: transparent;
+  color: var(--color-text-muted);
 }
 
 .sidebar__item-icon {
-  font-size: 1.1em;
-  width: 1.5em;
+  font-size: 1em;
+  width: 1.2em;
   text-align: center;
   flex-shrink: 0;
 }
 
-/* --- Main content area --- */
+/* --- Main Panel --- */
 
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   background-color: var(--color-bg);
+}
+
+/* --- Bottom System Bar --- */
+
+.system-bar {
+  display: flex;
+  align-items: center;
+  height: var(--status-bar-height);
+  padding: 0 var(--spacing-md);
+  background-color: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  gap: var(--spacing-sm);
+}
+
+.system-bar__status {
+  color: var(--color-success);
+}
+
+.system-bar__message {
+  color: var(--color-text-muted);
+  margin-left: var(--spacing-md);
+}
+
+.system-bar__spacer {
+  flex: 1;
+}
+
+.system-bar__info {
+  color: var(--color-text-muted);
+  opacity: 0.5;
 }
