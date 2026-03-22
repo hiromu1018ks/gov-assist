@@ -135,6 +135,9 @@ def create_app(enable_origin_check: bool = True) -> FastAPI:
     def health():
         return {"status": "ok", "version": "0.1.0"}
 
+    from routers.models_router import router as models_router
+    application.include_router(models_router)
+
     return application
 
 
