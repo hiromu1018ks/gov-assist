@@ -142,3 +142,49 @@ class TestComputeLineDiff:
 
         with pytest.raises(DiffTimeoutError):
             _compute_line_diff("ABC\nDEF", "ABC\nXYZ")
+
+
+class TestMergeConsecutive:
+    """§4.4 ステップ6: 連続する同種 diff ブロックをマージ"""
+
+    def test_merge_consecutive_deletes(self):
+        raw = [(-1, "あ"), (-1, "い"), (0, "う")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 2
+        assert result[0]["type"] == DiffType.DELETE
+        assert result[0]["text"] == "あい"
+        assert result[1]["type"] == DiffType.EQUAL
+
+    def test_merge_consecutive_inserts(self):
+        raw = [(0, "あ"), (1, "x"), (1, "y")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 2
+        assert result[1]["type"] == DiffType.INSERT
+        assert result[1]["text"] == "xy"
+
+    def test_merge_consecutive_equals(self):
+        raw = [(0, "あ"), (0, "い"), (-1, "う")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 2
+        assert result[0]["type"] == DiffType.EQUAL
+        assert result[0]["text"] == "あい"
+
+    def test_no_merge_needed(self):
+        raw = [(0, "A"), (-1, "B"), (1, "X"), (0, "C")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 4
+
+    def test_empty_input(self):
+        assert _merge_consecutive([]) == []
+
+    def test_single_block(self):
+        raw = [(0, "abc")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 1
+        assert result[0]["text"] == "abc"
+
+    def test_all_same_type(self):
+        raw = [(-1, "a"), (-1, "b"), (-1, "c")]
+        result = _merge_consecutive(raw)
+        assert len(result) == 1
+        assert result[0]["text"] == "abc"

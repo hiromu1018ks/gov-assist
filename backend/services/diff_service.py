@@ -114,6 +114,38 @@ def _compute_line_diff(text1: str, text2: str) -> list[tuple[int, str]]:
             raise DiffTimeoutError()
 
 
+# §4.4 ステップ6: 連続する同種 diff ブロックをマージ
+_OP_TO_TYPE = {-1: DiffType.DELETE, 0: DiffType.EQUAL, 1: DiffType.INSERT}
+
+
+def _merge_consecutive(diffs: list[tuple[int, str]]) -> list[dict]:
+    """Merge consecutive same-type diff blocks.
+
+    §4.4 ステップ6: 連続する同種 diff ブロックをマージ
+    例: [delete("く"), delete("だ")] → [delete("くだ")]
+
+    Converts raw diff tuples to dicts with DiffType enum.
+    """
+    if not diffs:
+        return []
+
+    result: list[dict] = []
+    current_type = _OP_TO_TYPE[diffs[0][0]]
+    current_text = diffs[0][1]
+
+    for op, text in diffs[1:]:
+        block_type = _OP_TO_TYPE[op]
+        if block_type == current_type:
+            current_text += text
+        else:
+            result.append({"type": current_type, "text": current_text})
+            current_type = block_type
+            current_text = text
+
+    result.append({"type": current_type, "text": current_text})
+    return result
+
+
 # --- Stubs for symbols not yet implemented (later tasks) ---
 
 
@@ -125,11 +157,6 @@ def compute_diffs(
 ) -> DiffResult:
     """Main entry point — orchestrates full diff pipeline."""
     raise NotImplementedError("compute_diffs will be implemented in a later task")
-
-
-def _merge_consecutive(diffs: list[tuple[int, str]]) -> list[tuple[int, str]]:
-    """Merge consecutive same-type blocks (Task 2)."""
-    raise NotImplementedError("_merge_consecutive will be implemented in a later task")
 
 
 def _absorb_short_blocks(
