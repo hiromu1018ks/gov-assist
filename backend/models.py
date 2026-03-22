@@ -21,3 +21,10 @@ class History(Base):
     )
     memo: Mapped[str | None] = mapped_column(Text, nullable=True)
     truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(50), primary_key=True)
+    value: Mapped[str] = mapped_column(String(200), nullable=False)

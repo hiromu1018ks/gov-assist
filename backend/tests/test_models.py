@@ -90,3 +90,41 @@ def test_history_model_default_truncated_is_false(db_session):
 
     retrieved = db_session.query(History).first()
     assert retrieved.truncated is False
+
+
+class TestSettingsModel:
+    def test_settings_model_columns(self, db_session):
+        """Settings テーブルのカラムが正しく定義されている"""
+        from models import Settings
+        from sqlalchemy import inspect
+
+        inspector = inspect(db_session.get_bind())
+        columns = {c["name"] for c in inspector.get_columns("settings")}
+
+        expected_columns = {"key", "value"}
+        assert expected_columns == columns
+
+    def test_settings_model_create_and_retrieve(self, db_session):
+        """Settings レコードの作成と取得"""
+        from models import Settings
+
+        record = Settings(key="history_limit", value="50")
+        db_session.add(record)
+        db_session.commit()
+
+        retrieved = db_session.query(Settings).filter_by(key="history_limit").first()
+        assert retrieved is not None
+        assert retrieved.value == "50"
+
+    def test_settings_model_key_is_unique(self, db_session):
+        """key カラムが一意制約を持つ"""
+        from models import Settings
+        from sqlalchemy.exc import IntegrityError
+
+        db_session.add(Settings(key="history_limit", value="50"))
+        db_session.commit()
+
+        duplicate = Settings(key="history_limit", value="100")
+        db_session.add(duplicate)
+        with pytest.raises(IntegrityError):
+            db_session.commit()
