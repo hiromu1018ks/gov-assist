@@ -1,5 +1,6 @@
+from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentType(str, Enum):
@@ -100,3 +101,49 @@ class SettingsResponse(BaseModel):
 
 class SettingsUpdateRequest(BaseModel):
     history_limit: int = Field(ge=1, le=200)
+
+
+# === History schemas (§5.1, §7) ===
+
+
+class HistoryCreateRequest(BaseModel):
+    input_text: str = Field(min_length=1, max_length=8000)
+    result: ProofreadResponse
+    model: str = Field(min_length=1, max_length=50)
+    document_type: str = Field(min_length=1, max_length=20)
+    memo: str | None = None
+
+
+class HistoryUpdateRequest(BaseModel):
+    memo: str | None = None
+
+
+class HistoryListItemResponse(BaseModel):
+    id: int
+    preview: str
+    document_type: str
+    model: str
+    created_at: datetime
+    truncated: bool
+    memo: str | None = None
+
+    @field_validator("preview")
+    @classmethod
+    def truncate_preview(cls, v: str) -> str:
+        return v[:50]
+
+
+class HistoryDetailResponse(BaseModel):
+    id: int
+    input_text: str
+    result: ProofreadResponse
+    model: str
+    document_type: str
+    created_at: datetime
+    truncated: bool
+    memo: str | None = None
+
+
+class HistoryListResponse(BaseModel):
+    items: list[HistoryListItemResponse]
+    total: int
