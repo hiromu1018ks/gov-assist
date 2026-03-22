@@ -468,6 +468,222 @@
   line-height: 1.6;
 }
 
+/* --- Input Area (§3.3.1) --- */
+
+.input-area {
+  max-width: 100%;
+}
+
+.input-area__warning-icon {
+  margin-right: var(--spacing-xs);
+}
+
+.input-area__textarea-wrapper {
+  position: relative;
+  border-radius: var(--radius);
+  transition: border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.input-area__textarea-wrapper.drop-zone--active {
+  border: 2px dashed var(--color-primary);
+  background-color: rgba(74, 144, 217, 0.05);
+}
+
+.input-area__textarea {
+  display: block;
+  width: 100%;
+  min-height: 16rem;
+}
+
+.input-area__extracting {
+  min-height: 16rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* Character counter */
+
+.char-counter {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.char-counter--over {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* Extraction source banner */
+
+.input-area__banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* --- Option Panel (§3.3.3) --- */
+
+.option-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.option-panel__legend {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding: 0 var(--spacing-sm);
+}
+
+.option-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm) var(--spacing-lg);
+  margin-top: var(--spacing-sm);
+}
+
+.option-panel:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* --- Result View (§3.3.4) --- */
+
+.result-view {
+  border-top: 2px solid var(--color-border);
+  padding-top: var(--spacing-md);
+}
+
+.result-view__summary {
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.result-view__notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.result-view__corrected-text h4 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text);
+}
+
+.result-view__corrected-text-body {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-md);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.result-view__empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.result-view__placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: var(--spacing-lg) 0;
+  text-align: center;
+}
+
+.result-view__panel {
+  min-height: 100px;
+}
+
+/* --- Correction List (Tab ③) --- */
+
+.correction-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.correction-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.correction-item__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.correction-item__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.correction-item__category {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg);
+  padding: 1px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.correction-item__pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.correction-item__original,
+.correction-item__corrected {
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.correction-item__original {
+  background-color: rgba(255, 204, 204, 0.3);
+}
+
+.correction-item__corrected {
+  background-color: rgba(204, 255, 204, 0.3);
+}
+
+.correction-item__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  margin-right: var(--spacing-xs);
+}
+
+.correction-item__reason {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border);
+}
+
 /* --- Diff View (§3.3.4: Tab ① Highlight & Tab ② Compare) --- */
 
 /* Highlight view: single-column diff display */

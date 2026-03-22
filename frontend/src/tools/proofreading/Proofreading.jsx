@@ -1,10 +1,30 @@
+// src/tools/proofreading/Proofreading.jsx
+import { useState } from 'react';
+import InputArea from './InputArea';
+import OptionPanel from './OptionPanel';
+import ResultView from './ResultView';
+
 function Proofreading() {
+  const [options, setOptions] = useState(null);
+  const [isSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleSubmit = (text, documentType) => {
+    // Task 19 will implement the full proofreading flow:
+    // preprocessing -> API call -> result display
+    console.log('Proofread requested:', { textLength: text.length, documentType, options });
+  };
+
   return (
-    <div className="card">
+    <div>
       <h2>AI 文書校正</h2>
-      <p className="mt-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        このツールは Task 15〜19 で実装されます。
-      </p>
+      <div className="mt-md">
+        <InputArea onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      </div>
+      <div className="mt-md">
+        <OptionPanel onChange={setOptions} disabled={isSubmitting} />
+      </div>
+      <ResultView result={result} />
     </div>
   );
 }
