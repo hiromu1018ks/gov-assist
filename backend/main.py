@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
-from database import init_db, check_fts5_ngram_support
+from database import init_db, check_fts5_ngram_support, init_fts5, _engine
 from dependencies import verify_token, get_app_token
 
 logger = logging.getLogger("govassist")
@@ -151,6 +151,9 @@ app = create_app()
 
 # DB 初期化（テーブルが存在しない場合は作成）
 init_db()
+
+# FTS5 テーブル初期化（履歴全文検索用）
+init_fts5(_engine)
 
 setup_logging()
 

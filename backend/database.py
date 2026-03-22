@@ -88,3 +88,42 @@ def check_fts5_ngram_support() -> bool:
     except Exception:
         FTS5_NGRAM_SUPPORTED = False
         return False
+
+
+def init_fts5(engine) -> None:
+    """Create FTS5 virtual table and sync triggers for history full-text search.
+
+    Uses IF NOT EXISTS so it's safe to call multiple times.
+    Only creates the table if FTS5 ngram tokenizer is supported.
+    """
+    if not check_fts5_ngram_support():
+        return
+
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS history_fts
+            USING fts5(input_text, memo, content=history, tokenize='ngram')
+        """))
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS history_ai AFTER INSERT ON history BEGIN
+                INSERT INTO history_fts(rowid, input_text, memo)
+                VALUES (new.id, new.input_text, COALESCE(new.memo, ''));
+            END
+        """))
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS history_ad AFTER DELETE ON history BEGIN
+                INSERT INTO history_fts(history_fts, rowid, input_text, memo)
+                VALUES ('delete', old.id, old.input_text, COALESCE(old.memo, ''));
+            END
+        """))
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS history_au AFTER UPDATE ON history BEGIN
+                INSERT INTO history_fts(history_fts, rowid, input_text, memo)
+                VALUES ('delete', old.id, old.input_text, COALESCE(old.memo, ''));
+                INSERT INTO history_fts(rowid, input_text, memo)
+                VALUES (new.id, new.input_text, COALESCE(new.memo, ''));
+            END
+        """))
+        conn.commit()

@@ -96,3 +96,44 @@ class TestHistorySchemas:
             memo=None,
         )
         assert detail.result.corrected_text == "校正済み"
+
+
+class TestFts5Setup:
+    """FTS5 virtual table creation tests."""
+
+    def test_init_fts5_creates_fts_table_when_supported(self, db_engine):
+        from database import init_fts5, check_fts5_ngram_support
+        if not check_fts5_ngram_support():
+            pytest.skip("FTS5 ngram not supported in this environment")
+        from sqlalchemy import text
+        init_fts5(db_engine)
+        with db_engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='history_fts'")
+            )
+            assert result.fetchone() is not None
+
+    def test_init_fts5_is_idempotent(self, db_engine):
+        from database import init_fts5, check_fts5_ngram_support
+        if not check_fts5_ngram_support():
+            pytest.skip("FTS5 ngram not supported in this environment")
+        from sqlalchemy import text
+        init_fts5(db_engine)
+        init_fts5(db_engine)  # 二回呼び出してもエラーにならない
+        with db_engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='history_fts'")
+            )
+            assert result.fetchone() is not None
+
+    def test_init_fts5_creates_triggers_when_supported(self, db_engine):
+        from database import init_fts5, check_fts5_ngram_support
+        if not check_fts5_ngram_support():
+            pytest.skip("FTS5 ngram not supported in this environment")
+        from sqlalchemy import text
+        init_fts5(db_engine)
+        with db_engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='trigger' AND name='history_ai'")
+            )
+            assert result.fetchone() is not None
