@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 GovAssist is a personal-use web application for Japanese local government clerical workers to proofread and improve documents (emails, reports, official documents) using AI. **Localhost-only use — no external deployment.**
 
 - **Design spec**: `docs/design.md` (v1.8.0, written in Japanese) — the authoritative source for all requirements
-- **Status**: Backend foundation built (app skeleton, auth, CORS, DB, schemas, tests). Frontend and API business logic not yet implemented.
+- **Status**: Backend foundation built (app skeleton, auth (disabled for MVP), CORS, DB, schemas, tests). Frontend and API business logic not yet implemented.
 
 ## Tech Stack
 

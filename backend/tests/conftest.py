@@ -42,7 +42,7 @@ def db_session(db_engine):
 
 @pytest.fixture
 def app_client(db_session):
-    """認証付き TestClient。DB セッションを注入する。"""
+    """DB セッションを注入する TestClient。"""
     from fastapi.testclient import TestClient
     from main import create_app
     # from dependencies import get_app_token  # Auth disabled for localhost MVP
