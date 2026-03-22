@@ -7,6 +7,7 @@ from schemas import (
     DiffBlock,
     DiffType,
     ProofreadStatus,
+    StatusReason,
 )
 from services.ai_client import AIClientError, ModelConfig
 from services.diff_service import DiffResult
@@ -282,3 +283,93 @@ class TestAIErrorHandling:
         data = resp.json()
         # Unknown error codes are sanitized to "ai_invalid_response"
         assert data["error"] == "ai_invalid_response"
+
+
+class TestParseAndDiffErrors:
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_parse_error_returns_502(
+        self, mock_config, mock_build, mock_create, mock_parse, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_create.return_value = AsyncMock()
+        mock_parse.return_value = ParseResult(
+            corrected_text="", summary=None, corrections=[],
+            status=ProofreadStatus.ERROR, status_reason=StatusReason.PARSE_FALLBACK,
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 502
+        data = resp.json()
+        assert data["error"] == "ai_parse_error"
+        assert data["request_id"] == "test-req-001"
+
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_parse_partial_returns_200_with_partial_status(
+        self, mock_config, mock_build, mock_create, mock_parse, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_create.return_value = AsyncMock()
+        mock_parse.return_value = ParseResult(
+            corrected_text="フォールバック抽出テキスト",
+            summary=None, corrections=[],
+            status=ProofreadStatus.PARTIAL, status_reason=StatusReason.PARSE_FALLBACK,
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "partial"
+        assert data["status_reason"] == "parse_fallback"
+        assert data["corrected_text"] == "フォールバック抽出テキスト"
+        assert data["diffs"] == []
+        assert data["warnings"] == []
+
+    @patch("routers.proofread.compute_diffs")
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_diff_timeout_returns_200_with_partial_status(
+        self, mock_config, mock_build, mock_create, mock_parse, mock_diffs, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_create.return_value = AsyncMock()
+        mock_parse.return_value = ParseResult(
+            corrected_text="校正済みテキスト", summary="2件の修正",
+            corrections=[], status=ProofreadStatus.SUCCESS, status_reason=None,
+        )
+        mock_diffs.return_value = DiffResult(
+            diffs=[], warnings=[],
+            status=ProofreadStatus.PARTIAL, status_reason=StatusReason.DIFF_TIMEOUT,
+            corrections=[],
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "partial"
+        assert data["status_reason"] == "diff_timeout"
+        assert data["corrected_text"] == "校正済みテキスト"
+        assert data["summary"] == "2件の修正"
+
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_internal_error_returns_500(self, mock_config, mock_build, client):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.side_effect = RuntimeError("unexpected crash")
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 500
+        data = resp.json()
+        assert data["error"] == "internal_error"
+        assert data["request_id"] == "test-req-001"
+        assert "内部エラー" in data["message"]
