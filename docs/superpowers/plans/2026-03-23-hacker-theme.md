@@ -36,6 +36,7 @@
 | `frontend/src/effects/ScanlineOverlay.jsx` | CRT scanline CSS overlay |
 | `frontend/src/effects/MatrixRain.jsx` | Canvas-based falling binary characters |
 | `frontend/src/effects/BootSequence.jsx` | BIOS-style startup animation |
+| `frontend/src/effects/GlitchText.jsx` | Glitch text effect (error states, diff delete) |
 | `frontend/src/effects/useStatusMessages.js` | Random status message hook |
 
 ### Files NOT changed
@@ -92,11 +93,13 @@ body {
   /* Text colors */
   --color-text: #c0ffd8;
   --color-text-bright: #00ff41;
+  --color-text-secondary: #00ff41;  /* ALIAS: removed in Task 5 after all refs updated */
   --color-text-muted: #5a8a62;
 
   /* Background colors */
   --color-bg: #000000;
   --color-bg-secondary: #0a0a0a;
+  --color-bg-white: #0a0a0a;  /* ALIAS: removed in Task 5 after all refs updated */
   --color-bg-elevated: #0d1117;
   --color-bg-hover: rgba(0, 255, 65, 0.08);
   --color-bg-active: rgba(0, 255, 65, 0.15);
@@ -208,6 +211,7 @@ Replace entire `layout.css`:
 /* --- Top Status Bar --- */
 
 .status-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -397,21 +401,33 @@ Replace entire `layout.css`:
 }
 ```
 
-- [ ] **Step 2: Update App.jsx — add status bar + system bar**
+- [ ] **Step 2: Update App.jsx — add status bar + system bar + all effects**
+
+This is the ONLY task that modifies App.jsx. All effects are wired here to avoid merge conflicts.
 
 ```jsx
 // src/App.jsx
+import { useState, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import SideMenu from './components/SideMenu';
 import WarningModal from './components/WarningModal';
+import BootSequence from './effects/BootSequence';
+import MatrixRain from './effects/MatrixRain';
+import useStatusMessages from './effects/useStatusMessages';
 import Proofreading from './tools/proofreading/Proofreading';
 import History from './tools/history/History';
 import Settings from './tools/settings/Settings';
 
 function App() {
+  const [bootDone, setBootDone] = useState(false);
+  const statusMessage = useStatusMessages();
+  const handleBootComplete = useCallback(() => setBootDone(true), []);
+
   return (
     <div className="app">
+      <MatrixRain />
+      {!bootDone && <BootSequence onComplete={handleBootComplete} />}
       <WarningModal />
       <Header />
       <div className="app-content">
@@ -428,7 +444,7 @@ function App() {
       <div className="system-bar">
         <span className="system-bar__status">●</span>
         <span>READY</span>
-        <span className="system-bar__message">All systems operational.</span>
+        <span className="system-bar__message">{statusMessage}</span>
         <span className="system-bar__spacer" />
         <span className="system-bar__info">localhost:8000</span>
       </div>
@@ -713,25 +729,25 @@ Replace the Messages section:
 }
 
 .message--warning {
-  background-color: rgba(255, 170, 0, 0.1);
+  background-color: rgba(255, 170, 0, 0.15);
   color: var(--color-warning);
   border-color: rgba(255, 170, 0, 0.2);
 }
 
 .message--error {
-  background-color: rgba(255, 0, 64, 0.1);
+  background-color: rgba(255, 0, 64, 0.15);
   color: var(--color-danger);
   border-color: rgba(255, 0, 64, 0.2);
 }
 
 .message--success {
-  background-color: rgba(57, 255, 20, 0.1);
+  background-color: rgba(57, 255, 20, 0.15);
   color: var(--color-success);
   border-color: rgba(57, 255, 20, 0.2);
 }
 
 .message--info {
-  background-color: rgba(0, 255, 255, 0.1);
+  background-color: rgba(0, 255, 255, 0.15);
   color: var(--color-accent);
   border-color: rgba(0, 255, 255, 0.2);
 }
@@ -739,7 +755,7 @@ Replace the Messages section:
 
 - [ ] **Step 3: Update spinner, tooltip, modal**
 
-Replace Spinner section (color only — keep @keyframes):
+Replace Spinner section (color only — remove @keyframes spin since it moves to animations.css in Task 7):
 
 ```css
 /* --- Spinner --- */
@@ -754,7 +770,8 @@ Replace Spinner section (color only — keep @keyframes):
   animation: spin 0.6s linear infinite;
   box-shadow: var(--glow-primary);
 }
-/* spinner--sm and --lg unchanged */
+/* spinner--sm and --lg unchanged — do NOT include @keyframes spin here */
+```
 
 .loading {
   display: flex;
@@ -1060,6 +1077,19 @@ Replace the Correction List section with hacker-styled items:
 ```
 
 - [ ] **Step 4: Update history, settings, remaining styles**
+
+**IMPORTANT: Remove token aliases.** Delete these two lines from `base.css` `:root` block (added in Task 1):
+```css
+--color-text-secondary: #00ff41;  /* ALIAS — DELETE THIS LINE */
+--color-bg-white: #0a0a0a;       /* ALIAS — DELETE THIS LINE */
+```
+Then find-and-replace all remaining references in `components.css`:
+- `var(--color-text-secondary)` → `var(--color-text-bright)` (13 occurrences)
+- `var(--color-bg-white)` → `var(--color-bg-secondary)` (5 occurrences: `.btn--secondary`, `.input/.textarea/.select`, `.modal`, `.card`, `.history-item`)
+
+**Fix hardcoded blue rgba values** — find and replace in `components.css`:
+- `rgba(74, 144, 217, 0.15)` → `rgba(0, 255, 65, 0.15)` (input focus box-shadow)
+- `rgba(74, 144, 217, 0.05)` → `rgba(0, 255, 65, 0.05)` (drop-zone active background — 2 occurrences)
 
 Replace History Item section:
 
@@ -1502,7 +1532,7 @@ git commit -m "feat(hacker-theme): add CRT scanline overlay and animation keyfra
 
 **Files:**
 - Create: `frontend/src/effects/MatrixRain.jsx`
-- Modify: `frontend/src/App.jsx`
+- (App.jsx already imports this from Task 2)
 
 - [ ] **Step 1: Create MatrixRain.jsx**
 
@@ -1595,31 +1625,15 @@ export default function MatrixRain() {
 }
 ```
 
-- [ ] **Step 2: Add MatrixRain to App.jsx**
-
-Import and render `<MatrixRain />` inside `.app` div, before `<WarningModal />`:
-
-```jsx
-import MatrixRain from './effects/MatrixRain';
-```
-
-```jsx
-<div className="app">
-  <MatrixRain />
-  <WarningModal />
-  {/* ... rest ... */}
-</div>
-```
-
-- [ ] **Step 3: Build and verify**
+- [ ] **Step 2: Build and verify**
 
 Run: `cd frontend && npm run build`
 Expected: Green characters falling in background. Performance should be smooth.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add frontend/src/effects/MatrixRain.jsx frontend/src/App.jsx
+git add frontend/src/effects/MatrixRain.jsx
 git commit -m "feat(hacker-theme): add Matrix rain canvas background effect"
 ```
 
@@ -1629,7 +1643,7 @@ git commit -m "feat(hacker-theme): add Matrix rain canvas background effect"
 
 **Files:**
 - Create: `frontend/src/effects/BootSequence.jsx`
-- Modify: `frontend/src/App.jsx`
+- (App.jsx already imports this from Task 2)
 
 - [ ] **Step 1: Create BootSequence.jsx**
 
@@ -1654,6 +1668,12 @@ export default function BootSequence({ onComplete }) {
   const [complete, setComplete] = useState(false);
 
   useEffect(() => {
+    // Skip if already shown this session
+    if (sessionStorage.getItem('govassist_boot_done') === '1') {
+      onComplete();
+      return;
+    }
+
     const lines = [...BOOT_LINES];
     let index = 0;
 
@@ -1676,6 +1696,7 @@ export default function BootSequence({ onComplete }) {
 
   useEffect(() => {
     if (complete && onComplete) {
+      sessionStorage.setItem('govassist_boot_done', '1');
       onComplete();
     }
   }, [complete, onComplete]);
@@ -1728,36 +1749,14 @@ export default function BootSequence({ onComplete }) {
 }
 ```
 
-- [ ] **Step 2: Add BootSequence to App.jsx**
-
-```jsx
-import { useState, useCallback } from 'react';
-import BootSequence from './effects/BootSequence';
-```
-
-```jsx
-function App() {
-  const [bootDone, setBootDone] = useState(false);
-
-  const handleBootComplete = useCallback(() => setBootDone(true), []);
-
-  return (
-    <div className="app">
-      {!bootDone && <BootSequence onComplete={handleBootComplete} />}
-      {/* ... rest ... */}
-    </div>
-  );
-}
-```
-
-- [ ] **Step 3: Build and verify**
+- [ ] **Step 2: Build and verify**
 
 Run: `cd frontend && npm run build`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add frontend/src/effects/BootSequence.jsx frontend/src/App.jsx
+git add frontend/src/effects/BootSequence.jsx
 git commit -m "feat(hacker-theme): add BIOS-style boot sequence on startup"
 ```
 
@@ -1767,7 +1766,7 @@ git commit -m "feat(hacker-theme): add BIOS-style boot sequence on startup"
 
 **Files:**
 - Create: `frontend/src/effects/useStatusMessages.js`
-- Modify: `frontend/src/App.jsx`
+- (App.jsx already imports this from Task 2)
 
 - [ ] **Step 1: Create useStatusMessages.js**
 
@@ -1809,36 +1808,12 @@ export default function useStatusMessages() {
 }
 ```
 
-- [ ] **Step 2: Wire into App.jsx system bar**
+- [ ] **Step 2: Build and verify**
 
-```jsx
-import useStatusMessages from './effects/useStatusMessages';
-```
-
-```jsx
-function App() {
-  const statusMessage = useStatusMessages();
-  // ...
-
-  return (
-    // ...
-    <div className="system-bar">
-      <span className="system-bar__status">●</span>
-      <span>READY</span>
-      <span className="system-bar__message">{statusMessage}</span>
-      <span className="system-bar__spacer" />
-      <span className="system-bar__info">localhost:8000</span>
-    </div>
-  );
-}
-```
-
-- [ ] **Step 3: Build and verify**
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add frontend/src/effects/useStatusMessages.js frontend/src/App.jsx
+git add frontend/src/effects/useStatusMessages.js
 git commit -m "feat(hacker-theme): add random status messages to system bar"
 ```
 
@@ -1933,6 +1908,6 @@ Open DevTools → Performance tab
 - [ ] **Step 5: Final commit with any polish fixes**
 
 ```bash
-git add -A
+git add frontend/src/
 git commit -m "feat(hacker-theme): visual polish and final adjustments"
 ```
