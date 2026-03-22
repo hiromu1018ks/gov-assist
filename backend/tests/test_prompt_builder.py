@@ -1,7 +1,5 @@
 """Tests for prompt builder service."""
 
-import pytest
-
 from services.prompt_builder import (
     SYSTEM_PROMPT,
     DOCUMENT_TYPE_LABELS,
