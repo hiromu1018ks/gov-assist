@@ -405,3 +405,56 @@ class TestAutoCleanup:
         db_session.add(Settings(key="history_limit", value="not-a-number"))
         db_session.flush()
         assert _get_history_limit(db_session) == 50
+
+
+class TestSearchHistory:
+    """History service — search tests (§5.4)."""
+
+    def test_like_search_matches_input_text(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="申請書を提出してください")
+        _create_history_via_service(db_session, input_text="会議の議事録です")
+        items, total = get_history_list(db_session, q="申請書")
+        assert total == 1
+        assert "申請書" in items[0].input_text
+
+    def test_like_search_matches_memo(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="テスト1", memo="重要な文書")
+        _create_history_via_service(db_session, input_text="テスト2", memo="普通の文書")
+        items, total = get_history_list(db_session, q="重要")
+        assert total == 1
+        assert items[0].memo == "重要な文書"
+
+    def test_like_search_matches_both(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="申請書です", memo="メモ")
+        _create_history_via_service(db_session, input_text="別の文書", memo="申請に関するメモ")
+        items, total = get_history_list(db_session, q="申請")
+        assert total == 2
+
+    def test_like_search_no_match(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="テスト文書")
+        items, total = get_history_list(db_session, q="存在しないキーワード")
+        assert total == 0
+
+    def test_search_combined_with_document_type_filter(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="申請書です", document_type="email")
+        _create_history_via_service(db_session, input_text="申請書の写し", document_type="official")
+        items, total = get_history_list(db_session, q="申請書", document_type="email")
+        assert total == 1
+
+    def test_empty_query_returns_all(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="文書1")
+        _create_history_via_service(db_session, input_text="文書2")
+        items, total = get_history_list(db_session, q="")
+        assert total == 2
+
+    def test_none_query_returns_all(self, db_session):
+        from services.history_service import get_history_list
+        _create_history_via_service(db_session, input_text="文書1")
+        items, total = get_history_list(db_session, q=None)
+        assert total == 1
