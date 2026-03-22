@@ -1,8 +1,16 @@
 """Tests for POST /api/proofread endpoint (§4.4, §5.2, §5.5)."""
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+from schemas import (
+    CorrectionItem,
+    DiffBlock,
+    DiffType,
+    ProofreadStatus,
+)
 from services.ai_client import ModelConfig
+from services.diff_service import DiffResult
+from services.response_parser import ParseResult
 
 VALID_REQUEST = {
     "request_id": "test-req-001",
@@ -62,11 +70,26 @@ class TestAuthAndValidation:
         assert "nonexistent-model" in data["message"]
         assert data["request_id"] == "test-req-001"
 
+    @patch("routers.proofread.compute_diffs")
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
     @patch("routers.proofread.get_model_config")
-    def test_valid_model_passes_validation(self, mock_config, client):
+    def test_valid_model_passes_validation(self, mock_config, mock_build, mock_create, mock_parse, mock_diffs, client):
         mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("system_prompt", "user_prompt")
+        mock_ai = AsyncMock()
+        mock_ai.complete.return_value = '{"corrected_text": "テスト", "summary": "OK", "corrections": []}'
+        mock_create.return_value = mock_ai
+        mock_parse.return_value = ParseResult(
+            corrected_text="テスト", summary="OK",
+            corrections=[], status=ProofreadStatus.SUCCESS, status_reason=None,
+        )
+        mock_diffs.return_value = DiffResult(
+            diffs=[], warnings=[],
+            status=ProofreadStatus.SUCCESS, status_reason=None, corrections=[],
+        )
         resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
-        # Currently returns 200 with stub response; will be refined in Task 2
         assert resp.status_code == 200
 
     def test_empty_text_returns_422(self, client):
@@ -84,3 +107,114 @@ class TestAuthAndValidation:
             headers=AUTH_HEADERS,
         )
         assert resp.status_code == 422
+
+
+class TestSuccessPath:
+    @patch("routers.proofread.compute_diffs")
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_successful_proofread(
+        self, mock_config, mock_build, mock_create, mock_parse, mock_diffs, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("system_prompt", "user_prompt")
+        mock_ai = AsyncMock()
+        mock_ai.complete.return_value = '{"corrected_text": "...", "summary": "...", "corrections": []}'
+        mock_create.return_value = mock_ai
+        mock_parse.return_value = ParseResult(
+            corrected_text="これはテスト文書です。誤字がありません。",
+            summary="1件の修正を行いました。",
+            corrections=[
+                CorrectionItem(
+                    original="あります", corrected="ありません",
+                    reason="否定の誤り", category="誤字脱字",
+                ),
+            ],
+            status=ProofreadStatus.SUCCESS,
+            status_reason=None,
+        )
+        mock_diffs.return_value = DiffResult(
+            diffs=[
+                DiffBlock(type=DiffType.EQUAL, text="これはテスト文書です。誤字が", start=0),
+                DiffBlock(type=DiffType.DELETE, text="あり", start=14, reason="否定の誤り"),
+                DiffBlock(type=DiffType.INSERT, text="ありません", start=14, position="after", reason="否定の誤り"),
+                DiffBlock(type=DiffType.EQUAL, text="。", start=16),
+            ],
+            warnings=[],
+            status=ProofreadStatus.SUCCESS,
+            status_reason=None,
+            corrections=[
+                CorrectionItem(
+                    original="あります", corrected="ありません",
+                    reason="否定の誤り", category="誤字脱字", diff_matched=True,
+                ),
+            ],
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["request_id"] == "test-req-001"
+        assert data["status"] == "success"
+        assert data["status_reason"] is None
+        assert data["corrected_text"] == "これはテスト文書です。誤字がありません。"
+        assert data["summary"] == "1件の修正を行いました。"
+        assert len(data["diffs"]) == 4
+        assert data["diffs"][1]["type"] == "delete"
+        assert data["diffs"][2]["position"] == "after"
+        assert len(data["corrections"]) == 1
+        assert data["corrections"][0]["diff_matched"] is True
+        assert data["warnings"] == []
+
+    @patch("routers.proofread.compute_diffs")
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_large_rewrite_appends_warning_to_summary(
+        self, mock_config, mock_build, mock_create, mock_parse, mock_diffs, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_create.return_value = AsyncMock()
+        mock_parse.return_value = ParseResult(
+            corrected_text="大幅修正テキスト", summary="5件の修正を行いました。",
+            corrections=[], status=ProofreadStatus.SUCCESS, status_reason=None,
+        )
+        mock_diffs.return_value = DiffResult(
+            diffs=[], warnings=["large_rewrite"],
+            status=ProofreadStatus.SUCCESS, status_reason=None, corrections=[],
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        data = resp.json()
+        assert data["warnings"] == ["large_rewrite"]
+        assert "広範囲を書き換えました" in data["summary"]
+        assert "5件の修正を行いました。" in data["summary"]
+
+    @patch("routers.proofread.compute_diffs")
+    @patch("routers.proofread.parse_ai_response", new_callable=AsyncMock)
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_large_rewrite_with_null_summary(
+        self, mock_config, mock_build, mock_create, mock_parse, mock_diffs, client,
+    ):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_create.return_value = AsyncMock()
+        mock_parse.return_value = ParseResult(
+            corrected_text="text", summary=None,
+            corrections=[], status=ProofreadStatus.SUCCESS, status_reason=None,
+        )
+        mock_diffs.return_value = DiffResult(
+            diffs=[], warnings=["large_rewrite"],
+            status=ProofreadStatus.SUCCESS, status_reason=None, corrections=[],
+        )
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        data = resp.json()
+        from routers.proofread import LARGE_REWRITE_SUMMARY
+        assert data["summary"] == LARGE_REWRITE_SUMMARY
