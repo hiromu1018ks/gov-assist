@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 @pytest.fixture
 def db_engine():
     """インメモリ SQLite エンジン（テスト用）"""
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     yield engine
     engine.dispose()
 

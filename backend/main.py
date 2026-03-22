@@ -138,6 +138,9 @@ def create_app(enable_origin_check: bool = True) -> FastAPI:
     from routers.models_router import router as models_router
     application.include_router(models_router)
 
+    from routers.settings import router as settings_router
+    application.include_router(settings_router)
+
     return application
 
 
