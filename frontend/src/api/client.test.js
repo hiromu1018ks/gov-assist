@@ -123,6 +123,19 @@ describe('API client', () => {
 
     expect(fetch.mock.calls[0][1].body).toBeUndefined();
   });
+
+  it('sends PUT request with JSON body', async () => {
+    setToken('my-token');
+    mockFetchJson({ history_limit: 100 });
+
+    const { apiPut } = await import('./client');
+    await apiPut('/api/settings', { history_limit: 100 });
+
+    expect(fetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ history_limit: 100 }),
+    }));
+  });
 });
 
 describe('apiPostBlob', () => {

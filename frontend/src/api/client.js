@@ -68,6 +68,10 @@ export async function apiDelete(path) {
   return request('DELETE', path, null);
 }
 
+export async function apiPut(path, body) {
+  return request('PUT', path, body);
+}
+
 export async function apiPostBlob(path, body) {
   const requestId = generateRequestId();
   const token = getToken();
