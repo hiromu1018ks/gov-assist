@@ -211,3 +211,64 @@ class TestExportDocxRequest:
                 corrected_text="",
                 document_type=DocumentType.OFFICIAL,
             )
+
+
+class TestModelInfoResponse:
+    def test_model_info_response_valid(self):
+        from schemas import ModelInfoResponse
+        m = ModelInfoResponse(
+            model_id="kimi-k2.5",
+            display_name="Kimi K2.5",
+            max_tokens=4096,
+            temperature=0.3,
+            max_input_chars=8000,
+            json_forced=True,
+        )
+        assert m.model_id == "kimi-k2.5"
+        assert m.display_name == "Kimi K2.5"
+
+    def test_models_response_list(self):
+        from schemas import ModelInfoResponse, ModelsResponse
+        models = ModelsResponse(models=[
+            ModelInfoResponse(
+                model_id="kimi-k2.5",
+                display_name="Kimi K2.5",
+                max_tokens=4096,
+                temperature=0.3,
+                max_input_chars=8000,
+                json_forced=True,
+            )
+        ])
+        assert len(models.models) == 1
+        assert models.models[0].model_id == "kimi-k2.5"
+
+
+class TestSettingsResponse:
+    def test_settings_response_valid(self):
+        from schemas import SettingsResponse
+        s = SettingsResponse(history_limit=50)
+        assert s.history_limit == 50
+
+    def test_settings_response_defaults(self):
+        from schemas import SettingsResponse
+        s = SettingsResponse()
+        assert s.history_limit == 50
+
+
+class TestSettingsUpdateRequest:
+    def test_settings_update_valid(self):
+        from schemas import SettingsUpdateRequest
+        s = SettingsUpdateRequest(history_limit=100)
+        assert s.history_limit == 100
+
+    def test_settings_update_below_minimum(self):
+        from schemas import SettingsUpdateRequest
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            SettingsUpdateRequest(history_limit=0)
+
+    def test_settings_update_above_maximum(self):
+        from schemas import SettingsUpdateRequest
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            SettingsUpdateRequest(history_limit=201)

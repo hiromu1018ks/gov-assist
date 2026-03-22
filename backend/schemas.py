@@ -79,3 +79,24 @@ class ErrorResponse(BaseModel):
 class ExportDocxRequest(BaseModel):
     corrected_text: str = Field(min_length=1)
     document_type: DocumentType
+
+
+class ModelInfoResponse(BaseModel):
+    model_id: str
+    display_name: str
+    max_tokens: int
+    temperature: float
+    max_input_chars: int
+    json_forced: bool
+
+
+class ModelsResponse(BaseModel):
+    models: list[ModelInfoResponse]
+
+
+class SettingsResponse(BaseModel):
+    history_limit: int = 50
+
+
+class SettingsUpdateRequest(BaseModel):
+    history_limit: int = Field(ge=1, le=200)
