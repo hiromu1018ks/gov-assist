@@ -1,7 +1,13 @@
+// src/App.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import App from './App';
+
+// Mock useAuth — App is always rendered as authenticated in these layout tests
+vi.mock('./context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: true, isLoading: false, login: vi.fn(), logout: vi.fn() })),
+  AuthProvider: ({ children }) => children,
+}));
 
 // Mock storage utility
 vi.mock('./utils/storage', () => ({
@@ -9,10 +15,15 @@ vi.mock('./utils/storage', () => ({
   saveSettings: vi.fn(),
 }));
 
-// Mock fetch for Header model selector
+// Mock API client to prevent real fetch calls from Header
+vi.mock('./api/client', () => ({
+  apiGet: vi.fn(() => Promise.resolve({ models: [] })),
+}));
+
+import App from './App';
+
 beforeEach(() => {
   vi.restoreAllMocks();
-  vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('No API in tests'));
 });
 
 function renderApp(initialEntries = '/') {
@@ -20,7 +31,7 @@ function renderApp(initialEntries = '/') {
 }
 
 describe('App', () => {
-  it('renders the app layout structure', () => {
+  it('renders the app layout structure when authenticated', () => {
     renderApp();
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('navigation')).toBeInTheDocument();

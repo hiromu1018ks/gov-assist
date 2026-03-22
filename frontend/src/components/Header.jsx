@@ -1,6 +1,8 @@
+// src/components/Header.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadSettings, saveSettings } from '../utils/storage';
+import { apiGet } from '../api/client';
 
 const DEFAULT_MODEL = { model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' };
 
@@ -10,11 +12,7 @@ function Header() {
   const [selectedModel, setSelectedModel] = useState(() => loadSettings().model);
 
   useEffect(() => {
-    fetch('/api/models')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    apiGet('/api/models')
       .then(data => {
         if (data.models?.length > 0) {
           setModels(data.models);
@@ -28,7 +26,7 @@ function Header() {
         }
       })
       .catch(() => {
-        // Auth not configured (Task 14) or network error — use default
+        // Network error or auth error (401 handled by AuthContext) — use defaults
       });
   }, []);
 
