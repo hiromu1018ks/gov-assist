@@ -8,7 +8,7 @@ from schemas import (
     DiffType,
     ProofreadStatus,
 )
-from services.ai_client import ModelConfig
+from services.ai_client import AIClientError, ModelConfig
 from services.diff_service import DiffResult
 from services.response_parser import ParseResult
 
@@ -218,3 +218,67 @@ class TestSuccessPath:
         data = resp.json()
         from routers.proofread import LARGE_REWRITE_SUMMARY
         assert data["summary"] == LARGE_REWRITE_SUMMARY
+
+
+class TestAIErrorHandling:
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_ai_timeout_returns_504(self, mock_config, mock_build, mock_create, client):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_ai = AsyncMock()
+        mock_ai.complete.side_effect = AIClientError("ai_timeout", "タイムアウト")
+        mock_create.return_value = mock_ai
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 504
+        data = resp.json()
+        assert data["error"] == "ai_timeout"
+        assert data["request_id"] == "test-req-001"
+        assert "タイムアウト" in data["message"]
+
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_ai_rate_limit_returns_502(self, mock_config, mock_build, mock_create, client):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_ai = AsyncMock()
+        mock_ai.complete.side_effect = AIClientError("ai_rate_limit", "レート制限")
+        mock_create.return_value = mock_ai
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 502
+        assert resp.json()["error"] == "ai_rate_limit"
+
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_ai_invalid_response_returns_502(self, mock_config, mock_build, mock_create, client):
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_ai = AsyncMock()
+        mock_ai.complete.side_effect = AIClientError("ai_invalid_response", "APIエラー")
+        mock_create.return_value = mock_ai
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 502
+        assert resp.json()["error"] == "ai_invalid_response"
+
+    @patch("routers.proofread.create_ai_client")
+    @patch("routers.proofread.build_prompts")
+    @patch("routers.proofread.get_model_config")
+    def test_unknown_ai_error_code_returns_502(self, mock_config, mock_build, mock_create, client):
+        """未知の AI エラーコードはデフォルトで 502 を返す"""
+        mock_config.return_value = MOCK_MODEL_CONFIG
+        mock_build.return_value = ("s", "u")
+        mock_ai = AsyncMock()
+        mock_ai.complete.side_effect = AIClientError("unknown_code", "不明なエラー")
+        mock_create.return_value = mock_ai
+
+        resp = client.post("/api/proofread", json=VALID_REQUEST, headers=AUTH_HEADERS)
+        assert resp.status_code == 502
+        data = resp.json()
+        # Unknown error codes are sanitized to "ai_invalid_response"
+        assert data["error"] == "ai_invalid_response"
