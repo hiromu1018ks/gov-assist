@@ -147,6 +147,9 @@ def create_app(enable_origin_check: bool = True) -> FastAPI:
     from routers.history import router as history_router
     application.include_router(history_router)
 
+    from routers.export import router as export_router
+    application.include_router(export_router)
+
     return application
 
 
