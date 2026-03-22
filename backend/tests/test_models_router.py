@@ -48,10 +48,12 @@ class TestGetModels:
         expected_keys = {"model_id", "display_name", "max_tokens", "temperature", "max_input_chars", "json_forced"}
         assert set(model.keys()) == expected_keys
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_without_auth(self, client):
         resp = client.get("/api/models")
         assert resp.status_code == 401
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_with_wrong_token(self, client):
         resp = client.get(
             "/api/models",

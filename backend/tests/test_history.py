@@ -467,6 +467,7 @@ class TestGetHistoryRouter:
         resp = client.get("/api/history", headers=auth_headers)
         assert resp.status_code == 200
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_without_auth(self, client):
         resp = client.get("/api/history")
         assert resp.status_code == 401
@@ -547,6 +548,7 @@ class TestPostHistoryRouter:
         )
         assert resp.status_code == 201
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_without_auth(self, client):
         resp = client.post("/api/history", json={"input_text": "test"})
         assert resp.status_code == 401
@@ -662,6 +664,7 @@ class TestPatchHistoryRouter:
         resp = client.patch("/api/history/9999", json={"memo": "x"}, headers=auth_headers)
         assert resp.status_code == 404
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_without_auth(self, client, db_session):
         record = _create_history_via_service(db_session)
         resp = client.patch(f"/api/history/{record.id}", json={"memo": "x"})
@@ -699,6 +702,7 @@ class TestDeleteHistoryRouter:
         resp = client.get("/api/history", headers=auth_headers)
         assert resp.json()["total"] == 0
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_delete_returns_401_without_auth(self, client):
         resp = client.delete("/api/history")
         assert resp.status_code == 401

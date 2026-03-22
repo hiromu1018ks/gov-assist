@@ -4,7 +4,9 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from dependencies import verify_token, get_app_token
+# from dependencies import verify_token, get_app_token  # Auth disabled for localhost MVP
+
+pytestmark = pytest.mark.skip(reason="Auth disabled for localhost MVP")
 
 
 def _create_test_app() -> FastAPI:

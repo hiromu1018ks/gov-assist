@@ -54,6 +54,7 @@ class TestExportEdgeCases:
             )
             assert resp.status_code == 200, f"Failed for document_type={doc_type}"
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_requires_auth(self, client):
         resp = client.post(
             "/api/export/docx",

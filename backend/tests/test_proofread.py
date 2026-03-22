@@ -45,10 +45,12 @@ def client(app_client):
 
 
 class TestAuthAndValidation:
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_requires_auth(self, client):
         resp = client.post("/api/proofread", json=VALID_REQUEST)
         assert resp.status_code == 401
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_rejects_wrong_token(self, client):
         resp = client.post(
             "/api/proofread",

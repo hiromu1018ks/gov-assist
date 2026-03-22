@@ -45,7 +45,7 @@ def app_client(db_session):
     """認証付き TestClient。DB セッションを注入する。"""
     from fastapi.testclient import TestClient
     from main import create_app
-    from dependencies import get_app_token
+    # from dependencies import get_app_token  # Auth disabled for localhost MVP
     from database import get_db
 
     def override_get_db():
@@ -55,7 +55,7 @@ def app_client(db_session):
             pass  # セッションは db_session フィクスチャで管理
 
     app = create_app(enable_origin_check=False)
-    app.dependency_overrides[get_app_token] = lambda: "test-secret-token"
+    # app.dependency_overrides[get_app_token] = lambda: "test-secret-token"  # Auth disabled
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()

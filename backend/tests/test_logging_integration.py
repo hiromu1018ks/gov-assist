@@ -66,6 +66,7 @@ class TestProofreadLogging:
 class TestAuthLogging:
     """Verify auth failures are handled correctly."""
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_unauthorized_request_returns_401(self, client):
         """認証なしリクエストは 401 を返す"""
         resp = client.post("/api/proofread", json={"text": "test"})

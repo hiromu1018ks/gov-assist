@@ -29,6 +29,7 @@ class TestGetSettings:
         resp = client.get("/api/settings", headers=auth_headers)
         assert resp.json()["history_limit"] == 50
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_returns_401_without_auth(self, client):
         resp = client.get("/api/settings")
         assert resp.status_code == 401
@@ -96,6 +97,7 @@ class TestPutSettings:
         )
         assert resp.status_code == 422
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_update_without_auth_returns_401(self, client):
         resp = client.put(
             "/api/settings",
@@ -103,6 +105,7 @@ class TestPutSettings:
         )
         assert resp.status_code == 401
 
+    @pytest.mark.skip(reason="Auth disabled for localhost MVP")
     def test_update_with_wrong_token_returns_401(self, client):
         resp = client.put(
             "/api/settings",
