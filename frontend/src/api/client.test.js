@@ -124,3 +124,48 @@ describe('API client', () => {
     expect(fetch.mock.calls[0][1].body).toBeUndefined();
   });
 });
+
+describe('apiPostBlob', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('returns blob on successful response', async () => {
+    setToken('my-token');
+    const blob = new Blob(['docx-content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      blob: () => Promise.resolve(blob),
+    });
+
+    const { apiPostBlob } = await import('./client');
+    const result = await apiPostBlob('/api/export/docx', { corrected_text: 'test' });
+
+    expect(result).toBe(blob);
+    expect(fetch).toHaveBeenCalledWith('/api/export/docx', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ corrected_text: 'test' }),
+      headers: expect.objectContaining({
+        Authorization: 'Bearer my-token',
+        'X-Request-ID': expect.any(String),
+      }),
+    }));
+  });
+
+  it('throws ApiError on non-OK response', async () => {
+    setToken('my-token');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve({ message: 'サーバーエラー' }),
+    });
+
+    const { apiPostBlob } = await import('./client');
+
+    await expect(apiPostBlob('/api/export/docx', { corrected_text: 'test' })).rejects.toThrow(ApiError);
+  });
+});

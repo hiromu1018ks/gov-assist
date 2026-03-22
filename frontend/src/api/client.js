@@ -67,3 +67,38 @@ export async function apiPatch(path, body) {
 export async function apiDelete(path) {
   return request('DELETE', path, null);
 }
+
+export async function apiPostBlob(path, body) {
+  const requestId = generateRequestId();
+  const token = getToken();
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Request-ID': requestId,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+  }
+
+  if (!response.ok) {
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+    throw new ApiError(response.status, data, requestId);
+  }
+
+  return response.blob();
+}
