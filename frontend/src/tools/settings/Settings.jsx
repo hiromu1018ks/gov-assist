@@ -168,7 +168,7 @@ export default function Settings() {
                 min="1"
                 max="200"
                 value={historyLimit}
-                onChange={(e) => setHistoryLimit(e.target.value)}
+                onChange={(e) => setHistoryLimit(Number(e.target.value))}
               />
               <p className="settings__hint">1〜200件で設定してください。古い履歴から自動削除されます。</p>
             </div>
