@@ -67,12 +67,14 @@ Expected: FAIL — module not found
 // FullTextView.jsx
 export default function FullTextView({ text, label }) {
   return (
-    <div className="full-text-view" role="region" aria-label={label}>
+    <div className="full-text-view" role="region" aria-label={label} style={{ whiteSpace: 'pre-wrap' }}>
       {text}
     </div>
   );
 }
 ```
+
+Note: Inline `style={{ whiteSpace: 'pre-wrap' }}` ensures the pre-wrap test passes immediately (CSS loaded separately may not be available in test env). The CSS file also declares `white-space: pre-wrap` for consistency.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -170,8 +172,10 @@ function getAvailableTabs(result) {
 Replace line 113:
 
 ```jsx
-export default function ResultView({ result, originalText, onRetry }) {
+export default function ResultView({ result, originalText = '', onRetry }) {
 ```
+
+Note: Default `originalText = ''` prevents broken intermediate state before Task 4 updates parent components.
 
 - [ ] **Step 4: Replace tab content rendering**
 
@@ -180,13 +184,6 @@ Replace lines 145-213 (the return block) with:
 ```jsx
   return (
     <div className="result-view mt-lg">
-      {/* Large rewrite warning */}
-      {hasLargeRewrite && (
-        <div className="message message--warning mb-md">
-          ⚠️ AI が広範囲を書き換えました。内容を十分ご確認ください。
-        </div>
-      )}
-
       {/* Status reason message */}
       {statusMessage && (
         <div className={`message message--${statusMessage.type} mb-md`}>
@@ -293,9 +290,9 @@ function DiffListView({ corrections, summary, warnings }) {
 }
 ```
 
-- [ ] **Step 6: Remove showCorrectedText variable**
+- [ ] **Step 6: Remove showCorrectedText and hasLargeRewrite variables**
 
-Remove line 128-129 (`showCorrectedText` variable) since corrected text is now shown in the "after" tab.
+Remove lines 127-129 (`hasLargeRewrite` and `showCorrectedText` variables). The `hasLargeRewrite` warning is now rendered inside `DiffListView` (Step 5), so it no longer needs to be computed here. The `showCorrectedText` variable is no longer needed since corrected text is shown in the "after" tab.
 
 - [ ] **Step 7: Commit**
 
@@ -427,17 +424,27 @@ Key changes to the test file:
    - `/比較表示/` → `/校正後/`
    - `/コメント一覧/` → `/差分/`
 
-2. **Line 58-61** (notice): Change `/表示は差分ベースです/` → `/差分タブのコメントは AI 推定/`
+2. **Line 53-56** (summary): Summary is now only visible in the diff tab. Update test to click diff tab first before asserting summary text:
+```jsx
+  it('renders summary text in diff tab', async () => {
+    const user = userEvent.setup();
+    render(<ResultView result={createResult()} originalText="入力" />);
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
+    expect(screen.getByText('3 件の修正を行いました。')).toBeInTheDocument();
+  });
+```
 
-3. **Line 63-69** (default active tab): Change `/ハイライト表示/` → `/校正前/`
+3. **Line 58-61** (notice): Change `/表示は差分ベースです/` → `/差分タブのコメントは AI 推定/`
 
-4. **Lines 100-173** (tab ③ comments → tab 差分): Change all `/コメント一覧/` → `/差分/`
+4. **Line 63-69** (default active tab): Change `/ハイライト表示/` → `/校正前/`
 
-5. **Lines 179-228** (partial status): Change tab name assertions:
+5. **Lines 100-173** (tab ③ comments → tab 差分): Change all `/コメント一覧/` → `/差分/`
+
+6. **Lines 179-228** (partial status): Change tab name assertions:
    - `/ハイライト表示/` → `/校正前/`
    - `/コメント一覧/` → `/差分/`
 
-6. **Lines 286-301** (tab switching): Update to test new tabs. Replace entire test:
+6. **Lines 286-301** (tab switching): Update to test new tabs. Replace entire test (also replace `/ハイライト表示/` → `/校正前/`):
 ```jsx
     it('switches content when tab is clicked', async () => {
       const user = userEvent.setup();
@@ -456,7 +463,7 @@ Key changes to the test file:
     });
 ```
 
-7. **Line 195-211** (partial without diffs): The `showCorrectedText` inline display is removed. Now corrected text shows in "after" tab. Update to check for the "after" tab and its content instead of checking for inline `校正済みテキスト` heading.
+7. **Line 195-211** (partial without diffs): The `showCorrectedText` inline display is removed. Now corrected text shows in "after" tab. Since `diff_timeout + no diffs` defaults to "after" tab, `screen.getByText('校正済みテキスト')` should still pass. Verify this.
 
 8. **Add new test** for `originalText` prop:
 ```jsx
@@ -471,16 +478,6 @@ Key changes to the test file:
       render(<ResultView result={createResult()} originalText="入力" />);
       await user.click(screen.getByRole('tab', { name: /校正後/ }));
       expect(screen.getByText('校正済みテキストです。')).toBeInTheDocument();
-    });
-```
-
-9. **Add test for summary in diff tab**:
-```jsx
-    it('renders summary in diff tab', async () => {
-      const user = userEvent.setup();
-      render(<ResultView result={createResult()} originalText="入力" />);
-      await user.click(screen.getByRole('tab', { name: /差分/ }));
-      expect(screen.getByText('3 件の修正を行いました。')).toBeInTheDocument();
     });
 ```
 
