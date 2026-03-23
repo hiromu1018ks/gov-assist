@@ -36,7 +36,7 @@ export default function BootSequence({ onComplete }) {
     }, TYPE_DELAY);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [onComplete]);
 
   const handleSkip = useCallback(() => {
     setComplete(true);
@@ -81,7 +81,7 @@ export default function BootSequence({ onComplete }) {
       <div style={{ color: '#00ff41', fontSize: '13px', lineHeight: '2', padding: '20px' }}>
         {visibleLines.map((line, i) => (
           <div
-            key={i}
+            key={line}
             style={{
               textShadow: '0 0 4px #00ff41',
               opacity: line.startsWith('[') ? 1 : 0.7,

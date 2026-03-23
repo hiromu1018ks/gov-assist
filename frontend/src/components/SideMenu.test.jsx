@@ -15,31 +15,31 @@ function renderWithRouter(ui, { initialEntries = ['/'] } = {}) {
 describe('SideMenu', () => {
   it('renders all menu items', () => {
     renderWithRouter(<SideMenu />);
-    expect(screen.getByText('AI 文書校正')).toBeInTheDocument();
-    expect(screen.getByText('校正履歴')).toBeInTheDocument();
-    expect(screen.getByText('文書要約・翻訳')).toBeInTheDocument();
-    expect(screen.getByText('PDF 加工')).toBeInTheDocument();
-    expect(screen.getByText('AI チャット')).toBeInTheDocument();
+    expect(screen.getByText('校正ツール')).toBeInTheDocument();
+    expect(screen.getByText('履歴')).toBeInTheDocument();
+    expect(screen.getByText('翻訳ツール')).toBeInTheDocument();
+    expect(screen.getByText('要約ツール')).toBeInTheDocument();
+    expect(screen.getByText('フォーマット')).toBeInTheDocument();
     expect(screen.getByText('設定')).toBeInTheDocument();
   });
 
   it('disables Phase 2/3 items', () => {
     renderWithRouter(<SideMenu />);
-    expect(screen.getByText('文書要約・翻訳')).toBeDisabled();
-    expect(screen.getByText('PDF 加工')).toBeDisabled();
-    expect(screen.getByText('AI チャット')).toBeDisabled();
+    expect(screen.getByText('翻訳ツール')).toBeDisabled();
+    expect(screen.getByText('要約ツール')).toBeDisabled();
+    expect(screen.getByText('フォーマット')).toBeDisabled();
   });
 
   it('does not disable MVP items', () => {
     renderWithRouter(<SideMenu />);
-    expect(screen.getByText('AI 文書校正')).not.toBeDisabled();
-    expect(screen.getByText('校正履歴')).not.toBeDisabled();
+    expect(screen.getByText('校正ツール')).not.toBeDisabled();
+    expect(screen.getByText('履歴')).not.toBeDisabled();
     expect(screen.getByText('設定')).not.toBeDisabled();
   });
 
   it('marks proofreading as active on / route', () => {
     renderWithRouter(<SideMenu />, { initialEntries: ['/'] });
-    const btn = screen.getByText('AI 文書校正').closest('button');
+    const btn = screen.getByText('校正ツール').closest('button');
     expect(btn).toHaveClass('sidebar__item--active');
   });
 
@@ -51,13 +51,13 @@ describe('SideMenu', () => {
 
   it('does not mark proofreading as active on /settings', () => {
     renderWithRouter(<SideMenu />, { initialEntries: ['/settings'] });
-    const btn = screen.getByText('AI 文書校正').closest('button');
+    const btn = screen.getByText('校正ツール').closest('button');
     expect(btn).not.toHaveClass('sidebar__item--active');
   });
 
   it('marks history as active on /history route', () => {
     renderWithRouter(<SideMenu />, { initialEntries: ['/history'] });
-    const btn = screen.getByText('校正履歴').closest('button');
+    const btn = screen.getByText('履歴').closest('button');
     expect(btn).toHaveClass('sidebar__item--active');
   });
 

@@ -41,12 +41,12 @@ describe('Header', () => {
 
   it('renders app title', () => {
     renderWithRouter(<Header />);
-    expect(screen.getByText('GovAssist')).toBeInTheDocument();
+    expect(screen.getByText('GOV_ASSIST')).toBeInTheDocument();
   });
 
   it('renders model selector with accessible label', () => {
     renderWithRouter(<Header />);
-    expect(screen.getByLabelText('AI モデル')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI モデル選択')).toBeInTheDocument();
   });
 
   it('renders settings button', () => {
@@ -89,7 +89,7 @@ describe('Header', () => {
       expect(screen.getByText('GPT-4')).toBeInTheDocument();
     });
 
-    await user.selectOptions(screen.getByLabelText('AI モデル'), 'gpt-4');
+    await user.selectOptions(screen.getByLabelText('AI モデル選択'), 'gpt-4');
 
     expect(saveSettings).toHaveBeenCalled();
   });

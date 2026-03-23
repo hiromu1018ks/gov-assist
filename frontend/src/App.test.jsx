@@ -44,13 +44,13 @@ describe('App', () => {
 
   it('renders header with app title', () => {
     renderApp();
-    expect(screen.getByText('GovAssist')).toBeInTheDocument();
+    expect(screen.getByText('GOV_ASSIST')).toBeInTheDocument();
   });
 
   it('renders sidebar with all menu items', () => {
     renderApp();
     const sidebar = document.querySelector('.sidebar');
-    expect(within(sidebar).getByText('AI 文書校正')).toBeInTheDocument();
+    expect(within(sidebar).getByText('校正ツール')).toBeInTheDocument();
     expect(within(sidebar).getByText('設定')).toBeInTheDocument();
   });
 
