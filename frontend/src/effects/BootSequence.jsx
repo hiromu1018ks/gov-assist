@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const BOOT_LINES = [
   'GOV_ASSIST BIOS v2.0 — POST check...',
@@ -15,15 +15,18 @@ const SKIP_DELAY = 500;
 export default function BootSequence({ onComplete }) {
   const [visibleLines, setVisibleLines] = useState([]);
   const [complete, setComplete] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (sessionStorage.getItem('govassist_boot_done') === '1') {
-      onComplete();
+      onCompleteRef.current();
       return;
     }
 
     const lines = [...BOOT_LINES];
     let index = 0;
+    let skipTimer = null;
 
     const timer = setInterval(() => {
       if (index < lines.length) {
@@ -31,23 +34,26 @@ export default function BootSequence({ onComplete }) {
         index++;
       } else {
         clearInterval(timer);
-        setTimeout(() => setComplete(true), SKIP_DELAY);
+        skipTimer = setTimeout(() => setComplete(true), SKIP_DELAY);
       }
     }, TYPE_DELAY);
 
-    return () => clearInterval(timer);
-  }, [onComplete]);
+    return () => {
+      clearInterval(timer);
+      if (skipTimer) clearTimeout(skipTimer);
+    };
+  }, []);
 
   const handleSkip = useCallback(() => {
     setComplete(true);
   }, []);
 
   useEffect(() => {
-    if (complete && onComplete) {
+    if (complete) {
       sessionStorage.setItem('govassist_boot_done', '1');
-      onComplete();
+      onCompleteRef.current();
     }
-  }, [complete, onComplete]);
+  }, [complete]);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -81,10 +87,10 @@ export default function BootSequence({ onComplete }) {
       <div style={{ color: '#00ff41', fontSize: '13px', lineHeight: '2', padding: '20px' }}>
         {visibleLines.map((line, i) => (
           <div
-            key={line}
+            key={i}
             style={{
               textShadow: '0 0 4px #00ff41',
-              opacity: line.startsWith('[') ? 1 : 0.7,
+              opacity: line?.startsWith('[') ? 1 : 0.7,
             }}
           >
             {line}
