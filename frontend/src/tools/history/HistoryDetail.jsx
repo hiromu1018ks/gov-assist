@@ -123,7 +123,7 @@ export default function HistoryDetail({ historyId, onBack }) {
       </div>
 
       {!detail.truncated && (
-        <ResultView result={detail.result} />
+        <ResultView result={detail.result} originalText={detail.input_text ?? ''} />
       )}
 
       {detail.truncated && detail.result?.corrected_text && (

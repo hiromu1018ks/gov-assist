@@ -137,7 +137,7 @@ function Proofreading() {
           再試行
         </button>
       )}
-      <ResultView result={result} onRetry={handleRetry} />
+      <ResultView result={result} originalText={lastParams?.rawText ?? ''} onRetry={handleRetry} />
       {hasContent && (
         <div className="action-bar mt-md">
           {showActions && (
