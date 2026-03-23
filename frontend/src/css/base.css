@@ -66,7 +66,7 @@ select {
   /* Text colors */
   --color-text: #c0ffd8;
   --color-text-bright: #00ff41;
-  --color-text-muted: #5a8a62;
+  --color-text-muted: #7ab882;
 
   /* Background colors */
   --color-bg: #000000;
@@ -91,8 +91,8 @@ select {
   --color-info: #00ffff;
 
   /* Diff colors */
-  --color-diff-delete-bg: rgba(255, 0, 64, 0.25);
-  --color-diff-delete-text: #ff2244;
+  --color-diff-delete-bg: rgba(255, 0, 64, 0.15);
+  --color-diff-delete-text: #ff5566;
   --color-diff-insert-bg: rgba(0, 255, 65, 0.25);
   --color-diff-insert-text: #44ff88;
 
