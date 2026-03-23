@@ -45,6 +45,7 @@ This lets users read the corrected document naturally, then check specific chang
   - Content area renders `FullTextView` or `DiffListView` based on active tab
   - 校正前 tab renders `<FullTextView text={originalText} label="校正前" />`
   - 校正後 tab renders `<FullTextView text={result.corrected_text} label="校正後" />`
+  - Remove `import { HighlightView, CompareView } from './DiffView'`
   - Status message placement: warnings shown above tab content (not in separate section)
   - Always-visible notice updated and placed below action buttons:
     "※ 差分タブのコメントは AI 推定であり、正確でない場合があります。"
@@ -64,8 +65,8 @@ This lets users read the corrected document naturally, then check specific chang
 
 **Delete**:
 - `.diff-highlight`, `.diff-highlight__empty` and all child selectors
-- `.diff-compare`, `.diff-compare__panel`, `.diff-compare__panel-header`, `.diff-compare__panel--scroll-sync`, `.diff-compare__panel--before`, `.diff-compare__panel--after`
-- Tooltip-related styles for diff spans
+- `.diff-compare`, `.diff-compare__panel`, `.diff-compare__panel-header`, `.diff-compare__panel--scroll-sync`
+- `.tooltip` and `.tooltip::after` (only consumer is deleted DiffView.jsx)
 - `.result-view__corrected-text`, `.result-view__corrected-text-body` (dead code after redesign — replaced by FullTextView)
 
 **Add**:
@@ -108,7 +109,7 @@ The following constraints from the main design spec do not apply to this redesig
 | `FullTextView.test.jsx` | Create — text rendering, pre-wrap behavior, label prop, ARIA attributes |
 | `ResultView.test.jsx` | Update — tab names (Japanese labels), `originalText` prop, tab control logic, status branching, updated notice text |
 | `ResultView.integration.test.jsx` | Update — remove DiffView references, test new tab flow with originalText prop |
-| `Proofreading.integration.test.jsx` | Update — tab label assertions changed from English to Japanese (e.g., "Highlight" → "校正前") |
+| `Proofreading.integration.test.jsx` | Verify — does not assert tab labels directly, but renders ResultView as child; verify it still passes after tab name changes |
 
 ## Out of Scope
 
