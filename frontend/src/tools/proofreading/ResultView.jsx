@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FullTextView from './FullTextView';
 
 const TABS = [
@@ -124,18 +124,19 @@ function DiffListView({ corrections, summary, warnings }) {
  *   error: no tabs, error message + retry button
  */
 export default function ResultView({ result, originalText = '', onRetry }) {
-  // IMPORTANT: useState must be called before any conditional returns
+  // IMPORTANT: useState and useEffect must be called before any conditional returns
   // to comply with React's Rules of Hooks (hooks must not be conditional).
-  // The initial value computes available tabs from result, defaulting to empty.
-  const [activeTab, setActiveTab] = useState(() => {
-    if (!result) return null;
-    const tabs = getAvailableTabs(result);
-    return tabs.length > 0 ? tabs[0].id : null;
-  });
+  const availableTabs = result ? getAvailableTabs(result) : [];
+  const defaultTab = availableTabs.length > 0 ? availableTabs[0].id : null;
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Reset activeTab when a new result arrives (e.g., after initial load or retry).
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [result ? `${result.status}-${result.request_id}` : 'null']); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!result) return null;
 
-  const availableTabs = getAvailableTabs(result);
   const statusMessage = getStatusMessage(result);
 
   // Error state: no tabs, error message + retry

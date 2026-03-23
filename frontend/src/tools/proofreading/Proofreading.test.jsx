@@ -135,9 +135,15 @@ describe('Proofreading', () => {
   });
 
   it('displays result after successful API response', async () => {
-    const { submitText } = setup();
+    const { user, submitText } = setup();
 
     await submitText();
+
+    // Summary is displayed in the diff tab
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
 
     await waitFor(() => {
       expect(screen.getByText('1件の修正を行いました。')).toBeInTheDocument();
@@ -159,7 +165,7 @@ describe('Proofreading', () => {
   it('retries with same params when retry is clicked', async () => {
     mockApiPost.mockRejectedValueOnce(new Error('タイムアウト'));
     mockApiPost.mockResolvedValueOnce(SUCCESS_RESPONSE);
-    const { submitText } = setup();
+    const { user, submitText } = setup();
 
     await submitText();
 
@@ -167,7 +173,13 @@ describe('Proofreading', () => {
       expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: '再試行' }));
+    await user.click(screen.getByRole('button', { name: '再試行' }));
+
+    // Summary is displayed in the diff tab
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
 
     await waitFor(() => {
       expect(screen.getByText('1件の修正を行いました。')).toBeInTheDocument();
@@ -186,15 +198,21 @@ describe('Proofreading', () => {
   });
 
   it('clears result, error, and resets input on clear', async () => {
-    const { submitText } = setup('テストテキスト');
+    const { user, submitText } = setup('テストテキスト');
 
     await submitText();
+
+    // Summary is displayed in the diff tab — switch to verify result is shown
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
 
     await waitFor(() => {
       expect(screen.getByText('1件の修正を行いました。')).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: 'クリア' }));
+    await user.click(screen.getByRole('button', { name: 'クリア' }));
 
     expect(screen.queryByText('1件の修正を行いました。')).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText(/校正したいテキスト/)).toHaveValue('');
@@ -235,7 +253,7 @@ describe('Proofreading', () => {
     mockApiPost.mockRejectedValueOnce(new Error('タイムアウト'));
     mockApiPost.mockResolvedValueOnce(errorResponse);
     mockApiPost.mockResolvedValueOnce(SUCCESS_RESPONSE);
-    const { submitText } = setup();
+    const { user, submitText } = setup();
 
     // First attempt fails with network error
     await submitText();
@@ -244,13 +262,20 @@ describe('Proofreading', () => {
     });
 
     // Retry returns status: "error"
-    await userEvent.click(screen.getByRole('button', { name: '再試行' }));
+    await user.click(screen.getByRole('button', { name: '再試行' }));
     await waitFor(() => {
       expect(screen.getByText(/校正結果を取得できませんでした/)).toBeInTheDocument();
     });
 
     // ResultView has its own retry button
-    await userEvent.click(screen.getByRole('button', { name: '再試行' }));
+    await user.click(screen.getByRole('button', { name: '再試行' }));
+
+    // Summary is displayed in the diff tab
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
+
     await waitFor(() => {
       expect(screen.getByText('1件の修正を行いました。')).toBeInTheDocument();
     });

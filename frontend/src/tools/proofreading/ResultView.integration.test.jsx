@@ -8,8 +8,8 @@ import { describe, it, expect } from 'vitest';
 
 import ResultView from './ResultView';
 
-describe('ResultView — multiple corrections in comments tab', () => {
-  it('displays all corrections after switching to comments tab', async () => {
+describe('ResultView — multiple corrections in diff tab', () => {
+  it('displays all corrections after switching to diff tab', async () => {
     const user = userEvent.setup();
     const result = {
       request_id: 'test',
@@ -28,11 +28,11 @@ describe('ResultView — multiple corrections in comments tab', () => {
       ],
     };
 
-    render(<ResultView result={result} />);
+    render(<ResultView result={result} originalText="テスト入力" />);
 
-    // Switch to comments tab (tab 3) — actual label is "③ コメント一覧"
-    const commentsTab = screen.getByRole('tab', { name: /コメント一覧/ });
-    await user.click(commentsTab);
+    // Switch to diff tab (tab 3) — label is "差分"
+    const diffTab = screen.getByRole('tab', { name: /差分/ });
+    await user.click(diffTab);
 
     expect(screen.getByText('理由1')).toBeInTheDocument();
     expect(screen.getByText('理由2')).toBeInTheDocument();
@@ -60,10 +60,10 @@ describe('ResultView — edge cases', () => {
       ],
     };
 
-    render(<ResultView result={result} />);
+    render(<ResultView result={result} originalText="テスト入力" />);
     // Should not crash — component checks {c.reason && (...)}
-    // Navigate to comments tab to verify the correction renders
-    await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+    // Navigate to diff tab to verify the correction renders
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
     expect(screen.getByText('修正前テキストX')).toBeInTheDocument();
     // Empty string reason should not render a reason block
     expect(screen.queryByText(/^理由：/)).not.toBeInTheDocument();
@@ -81,7 +81,7 @@ describe('ResultView — edge cases', () => {
       diffs: [],
     };
 
-    render(<ResultView result={result} />);
+    render(<ResultView result={result} originalText="テスト入力" />);
     expect(screen.getByText('タイムアウト時の校正テキスト')).toBeInTheDocument();
     // Component returns "差分計算に失敗しました" for diff_timeout without diffs
     expect(screen.getByText(/差分計算に失敗しました/)).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('ResultView — edge cases', () => {
     };
 
     const onRetry = () => {};
-    render(<ResultView result={result} onRetry={onRetry} />);
+    render(<ResultView result={result} originalText="テスト入力" onRetry={onRetry} />);
     expect(screen.getByText(/校正結果を取得できませんでした/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
   });

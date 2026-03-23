@@ -66,8 +66,14 @@ describe('Proofreading — large_rewrite warning', () => {
       diffs: [],
     });
 
-    const { submitText } = setup();
+    const { user, submitText } = setup();
     await submitText();
+
+    // Warning is in the diff tab — switch to it
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
 
     await waitFor(() => {
       expect(screen.getByText(/広範囲を書き換えました/)).toBeInTheDocument();
@@ -86,8 +92,14 @@ describe('Proofreading — large_rewrite warning', () => {
       diffs: [],
     });
 
-    const { submitText } = setup();
+    const { user, submitText } = setup();
     await submitText();
+
+    // Summary is in the diff tab — switch to it
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: /差分/ }));
 
     await waitFor(() => {
       expect(screen.getByText(/1件の修正を行いました/)).toBeInTheDocument();
