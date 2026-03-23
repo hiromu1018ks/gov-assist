@@ -59,6 +59,8 @@ select {
 /* --- CSS Custom Properties --- */
 
 :root {
+  color-scheme: dark;
+
   /* Font */
   --font-mono: 'Share Tech Mono', 'Courier New', monospace;
   --font-body: 'Share Tech Mono', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', monospace;
