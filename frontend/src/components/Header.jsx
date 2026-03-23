@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadSettings, saveSettings } from '../utils/storage';
@@ -25,9 +24,7 @@ function Header() {
           }
         }
       })
-      .catch(() => {
-        // Network error or auth error (401 handled by AuthContext) — use defaults
-      });
+      .catch(() => {});
   }, []);
 
   const handleModelChange = (e) => {
@@ -37,31 +34,38 @@ function Header() {
   };
 
   return (
-    <header className="app-header">
-      <span className="app-header__title">GovAssist</span>
-      <div className="app-header__actions">
-        <label className="sr-only" htmlFor="model-selector">AI モデル</label>
-        <select
-          id="model-selector"
-          className="select"
-          value={selectedModel}
-          onChange={handleModelChange}
-          style={{ width: 'auto' }}
-        >
-          {models.map(model => (
-            <option key={model.model_id} value={model.model_id}>
-              {model.display_name}
-            </option>
-          ))}
-        </select>
-        <button
-          className="btn btn--sm btn--secondary"
-          onClick={() => navigate('/settings')}
-          aria-label="設定を開く"
-          type="button"
-        >
-          ⚙
-        </button>
+    <header className="status-bar">
+      <div className="status-bar__left">
+        <span className="status-bar__prompt">▶</span>
+        <span>GOV_ASSIST</span>
+        <span className="status-bar__version">v1.0</span>
+        <span className="status-bar__indicator">● ONLINE</span>
+      </div>
+      <div className="status-bar__right">
+        <span>[ AI: {models.find(m => m.model_id === selectedModel)?.display_name || selectedModel} ]</span>
+        <div className="status-bar__actions">
+          <select
+            className="select"
+            value={selectedModel}
+            onChange={handleModelChange}
+            style={{ width: 'auto', fontSize: 'var(--font-size-xs)' }}
+            aria-label="AI モデル選択"
+          >
+            {models.map(model => (
+              <option key={model.model_id} value={model.model_id}>
+                {model.display_name}
+              </option>
+            ))}
+          </select>
+          <button
+            className="btn btn--sm btn--secondary"
+            onClick={() => navigate('/settings')}
+            aria-label="設定を開く"
+            type="button"
+          >
+            ⚙
+          </button>
+        </div>
       </div>
     </header>
   );

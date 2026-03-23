@@ -1,20 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { path: '/', label: 'AI 文書校正', icon: '📝' },
-  { path: '/history', label: '校正履歴', icon: '📋' },
-  { path: null, label: '文書要約・翻訳', icon: '📄' },
-  { path: null, label: 'PDF 加工', icon: '🗂' },
-  { path: null, label: 'AI チャット', icon: '💬' },
+  { path: '/', label: 'proofread', displayLabel: '校正ツール', icon: '○' },
+  { path: '/history', label: 'history', displayLabel: '履歴', icon: '○' },
+  { path: null, label: 'translate', displayLabel: '翻訳ツール', icon: '○' },
+  { path: null, label: 'summarize', displayLabel: '要約ツール', icon: '○' },
+  { path: null, label: 'format', displayLabel: 'フォーマット', icon: '○' },
 ];
 
 const FOOTER_ITEMS = [
-  { path: '/settings', label: '設定', icon: '⚙' },
+  { path: '/settings', label: 'settings', displayLabel: '設定', icon: '○' },
 ];
 
-function MenuItem({ path, label, icon, isActive }) {
+function MenuItem({ path, label, displayLabel, icon, isActive }) {
   const navigate = useNavigate();
   const disabled = !path;
+  const activeIcon = isActive ? '▸' : icon;
 
   const className = [
     'sidebar__item',
@@ -28,8 +29,8 @@ function MenuItem({ path, label, icon, isActive }) {
       disabled={disabled}
       onClick={() => { if (path) navigate(path); }}
     >
-      <span className="sidebar__item-icon">{icon}</span>
-      {label}
+      <span className="sidebar__item-icon">{activeIcon}</span>
+      {displayLabel}
     </button>
   );
 }
@@ -39,12 +40,14 @@ function SideMenu() {
 
   return (
     <aside className="sidebar">
+      <div className="sidebar__label">[ MODULES ]</div>
       <nav className="sidebar__nav">
         {NAV_ITEMS.map(item => (
           <MenuItem
             key={item.label}
             path={item.path}
             label={item.label}
+            displayLabel={item.displayLabel}
             icon={item.icon}
             isActive={location.pathname === item.path}
           />
@@ -56,6 +59,7 @@ function SideMenu() {
             key={item.label}
             path={item.path}
             label={item.label}
+            displayLabel={item.displayLabel}
             icon={item.icon}
             isActive={location.pathname === item.path}
           />
