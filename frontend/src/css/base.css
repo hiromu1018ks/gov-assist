@@ -66,13 +66,11 @@ select {
   /* Text colors */
   --color-text: #c0ffd8;
   --color-text-bright: #00ff41;
-  --color-text-secondary: #00ff41;  /* ALIAS: removed in Task 5 after all refs updated */
   --color-text-muted: #5a8a62;
 
   /* Background colors */
   --color-bg: #000000;
   --color-bg-secondary: #0a0a0a;
-  --color-bg-white: #0a0a0a;  /* ALIAS: removed in Task 5 after all refs updated */
   --color-bg-elevated: #0d1117;
   --color-bg-hover: rgba(0, 255, 65, 0.08);
   --color-bg-active: rgba(0, 255, 65, 0.15);
