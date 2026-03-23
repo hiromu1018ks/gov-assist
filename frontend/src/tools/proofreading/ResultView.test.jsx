@@ -36,7 +36,7 @@ describe('ResultView', () => {
   // --- Null result ---
 
   it('returns null when result is null', () => {
-    const { container } = render(<ResultView result={null} />);
+    const { container } = render(<ResultView result={null} originalText="入力テキスト" />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -44,64 +44,85 @@ describe('ResultView', () => {
 
   describe('success status', () => {
     it('renders all 3 tabs', () => {
-      render(<ResultView result={createResult()} />);
-      expect(screen.getByRole('tab', { name: /ハイライト表示/ })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /比較表示/ })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /コメント一覧/ })).toBeInTheDocument();
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
+      expect(screen.getByRole('tab', { name: /校正前/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /校正後/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
     });
 
-    it('renders summary text', () => {
-      render(<ResultView result={createResult()} />);
+    it('renders summary text in diff tab', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText('3 件の修正を行いました。')).toBeInTheDocument();
     });
 
     it('renders diff-based notice', () => {
-      render(<ResultView result={createResult()} />);
-      expect(screen.getByText(/表示は差分ベースです/)).toBeInTheDocument();
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
+      expect(screen.getByText(/差分タブのコメントは AI 推定/)).toBeInTheDocument();
     });
 
-    it('defaults to first tab (highlight) as active', () => {
-      render(<ResultView result={createResult()} />);
-      expect(screen.getByRole('tab', { name: /ハイライト表示/ })).toHaveAttribute(
+    it('defaults to first tab (before) as active', () => {
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
+      expect(screen.getByRole('tab', { name: /校正前/ })).toHaveAttribute(
         'aria-selected',
         'true',
       );
     });
 
     it('does not show status message for success', () => {
-      render(<ResultView result={createResult()} />);
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
       expect(screen.queryByText(/タイムアウト/)).not.toBeInTheDocument();
       expect(screen.queryByText(/不完全でした/)).not.toBeInTheDocument();
     });
 
-    it('does not render summary section when summary is null', () => {
-      const { container } = render(<ResultView result={createResult({ summary: null })} />);
-      expect(container.querySelector('.result-view__summary')).toBeNull();
+    it('does not render summary section when summary is null', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult({ summary: null })} originalText="入力テキスト" />);
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
+      expect(screen.queryByText('3 件の修正を行いました。')).not.toBeInTheDocument();
+    });
+
+    it('renders originalText in before tab', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult()} originalText="オリジナル文書" />);
+      expect(screen.getByText('オリジナル文書')).toBeInTheDocument();
+    });
+
+    it('renders corrected_text in after tab', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult()} originalText="入力" />);
+      await user.click(screen.getByRole('tab', { name: /校正後/ }));
+      expect(screen.getByText('校正済みテキストです。')).toBeInTheDocument();
     });
   });
 
   // --- Large rewrite warning ---
 
   describe('large rewrite warning', () => {
-    it('shows warning when warnings includes large_rewrite', () => {
-      render(<ResultView result={createResult({ warnings: ['large_rewrite'] })} />);
+    it('shows warning when warnings includes large_rewrite', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult({ warnings: ['large_rewrite'] })} originalText="入力テキスト" />);
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText(/AI が広範囲を書き換えました/)).toBeInTheDocument();
     });
 
-    it('does not show warning when warnings is empty', () => {
-      render(<ResultView result={createResult({ warnings: [] })} />);
+    it('does not show warning when warnings is empty', async () => {
+      const user = userEvent.setup();
+      render(<ResultView result={createResult({ warnings: [] })} originalText="入力テキスト" />);
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.queryByText(/AI が広範囲を書き換えました/)).not.toBeInTheDocument();
     });
   });
 
-  // --- Tab ③ comments list ---
+  // --- Diff tab ---
 
-  describe('tab ③ comments list', () => {
+  describe('diff tab', () => {
     it('shows corrections with original, corrected, reason, category', async () => {
       const user = userEvent.setup();
-      render(<ResultView result={createResult()} />);
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
 
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
 
       expect(screen.getByText('修正前テキスト')).toBeInTheDocument();
       expect(screen.getByText('修正後テキスト')).toBeInTheDocument();
@@ -111,9 +132,9 @@ describe('ResultView', () => {
 
     it('shows "修正箇所はありません" when corrections is empty', async () => {
       const user = userEvent.setup();
-      render(<ResultView result={createResult({ corrections: [] })} />);
+      render(<ResultView result={createResult({ corrections: [] })} originalText="入力テキスト" />);
 
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText('修正箇所はありません。')).toBeInTheDocument();
     });
 
@@ -132,18 +153,19 @@ describe('ResultView', () => {
               },
             ],
           })}
+          originalText="入力テキスト"
         />,
       );
 
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText('参考（AI推定）')).toBeInTheDocument();
     });
 
     it('does not show badge for diff_matched: true', async () => {
       const user = userEvent.setup();
-      render(<ResultView result={createResult()} />);
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
 
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.queryByText('参考（AI推定）')).not.toBeInTheDocument();
     });
 
@@ -162,10 +184,11 @@ describe('ResultView', () => {
               },
             ],
           })}
+          originalText="入力テキスト"
         />,
       );
 
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText('A')).toBeInTheDocument();
       expect(screen.getByText('B')).toBeInTheDocument();
       // No crash, no reason label when reason is null
@@ -184,15 +207,16 @@ describe('ResultView', () => {
             status_reason: 'diff_timeout',
             diffs: [{ type: 'equal', text: 'テスト', start: 0, position: null, reason: null }],
           })}
+          originalText="入力テキスト"
         />,
       );
 
       expect(screen.getByText(/差分計算がタイムアウトしました/)).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /ハイライト表示/ })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /コメント一覧/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /校正前/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
     });
 
-    it('shows only tab ③ + corrected text for diff_timeout without diffs', () => {
+    it('shows after + diff tabs for diff_timeout without diffs', () => {
       render(
         <ResultView
           result={createResult({
@@ -200,17 +224,19 @@ describe('ResultView', () => {
             status_reason: 'diff_timeout',
             diffs: [],
           })}
+          originalText="入力テキスト"
         />,
       );
 
       expect(screen.getByText(/差分計算に失敗しました/)).toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: /ハイライト表示/ })).not.toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /コメント一覧/ })).toBeInTheDocument();
-      // corrected_text displayed prominently
-      expect(screen.getByText('校正済みテキスト')).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /校正前/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /校正後/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+      // corrected_text shown in "after" tab (default active)
+      expect(screen.getByText('校正済みテキストです。')).toBeInTheDocument();
     });
 
-    it('shows only tab ③ + corrected text for parse_fallback', () => {
+    it('shows after + diff tabs for parse_fallback', () => {
       render(
         <ResultView
           result={createResult({
@@ -218,13 +244,15 @@ describe('ResultView', () => {
             status_reason: 'parse_fallback',
             diffs: [],
           })}
+          originalText="入力テキスト"
         />,
       );
 
       expect(screen.getByText(/AI の応答形式が不完全でした/)).toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: /ハイライト表示/ })).not.toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /コメント一覧/ })).toBeInTheDocument();
-      expect(screen.getByText('校正済みテキスト')).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /校正前/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /校正後/ })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /差分/ })).toBeInTheDocument();
+      expect(screen.getByText('校正済みテキストです。')).toBeInTheDocument();
     });
   });
 
@@ -237,6 +265,7 @@ describe('ResultView', () => {
         <ResultView
           result={createResult({ status: 'error', status_reason: 'parse_fallback' })}
           onRetry={onRetry}
+          originalText="入力テキスト"
         />,
       );
 
@@ -251,6 +280,7 @@ describe('ResultView', () => {
         <ResultView
           result={createResult({ status: 'error', status_reason: 'parse_fallback' })}
           onRetry={onRetry}
+          originalText="入力テキスト"
         />,
       );
 
@@ -262,6 +292,7 @@ describe('ResultView', () => {
       render(
         <ResultView
           result={createResult({ status: 'error', status_reason: 'parse_fallback' })}
+          originalText="入力テキスト"
         />,
       );
 
@@ -272,11 +303,12 @@ describe('ResultView', () => {
       render(
         <ResultView
           result={createResult({ status: 'error', status_reason: 'parse_fallback' })}
+          originalText="入力テキスト"
         />,
       );
 
       expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-      expect(screen.queryByText(/表示は差分ベース/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/差分タブのコメントは AI 推定/)).not.toBeInTheDocument();
     });
   });
 
@@ -285,17 +317,17 @@ describe('ResultView', () => {
   describe('tab switching', () => {
     it('switches content when tab is clicked', async () => {
       const user = userEvent.setup();
-      render(<ResultView result={createResult()} />);
+      render(<ResultView result={createResult()} originalText="入力テキスト" />);
 
-      // Initially on highlight tab — shows diff content
-      expect(screen.getByText('前半')).toBeInTheDocument();
+      // Initially on before tab — shows original text
+      expect(screen.getByText('入力テキスト')).toBeInTheDocument();
 
-      // Switch to compare tab
-      await user.click(screen.getByRole('tab', { name: /比較表示/ }));
-      expect(screen.getByText(/修正前/)).toBeInTheDocument();
+      // Switch to after tab
+      await user.click(screen.getByRole('tab', { name: /校正後/ }));
+      expect(screen.getByText('校正済みテキストです。')).toBeInTheDocument();
 
-      // Switch to comments tab
-      await user.click(screen.getByRole('tab', { name: /コメント一覧/ }));
+      // Switch to diff tab
+      await user.click(screen.getByRole('tab', { name: /差分/ }));
       expect(screen.getByText('修正前テキスト')).toBeInTheDocument();
     });
   });
