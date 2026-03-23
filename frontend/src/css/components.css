@@ -551,12 +551,6 @@
   padding-top: var(--spacing-md);
 }
 
-.result-view__summary {
-  font-size: var(--font-size-base);
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
 .result-view__notice {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -599,13 +593,6 @@
   color: var(--color-warning);
   font-size: var(--font-size-sm);
   border-left: 3px solid var(--color-warning);
-}
-
-.result-view__placeholder {
-  color: var(--color-text-muted);
-  font-style: italic;
-  padding: var(--spacing-lg) 0;
-  text-align: center;
 }
 
 .result-view__panel {
