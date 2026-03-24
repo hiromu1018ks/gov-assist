@@ -14,6 +14,9 @@ from services.ai_client import (
 
 
 class TestModelConfig:
+    def test_all_models_count(self):
+        assert len(MODEL_CONFIGS) == 9
+
     def test_kimi_k25_config_exists(self):
         config = get_model_config("gpt-oss-120b")
         assert isinstance(config, ModelConfig)

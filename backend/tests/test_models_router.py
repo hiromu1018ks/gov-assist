@@ -24,7 +24,7 @@ class TestGetModels:
         data = resp.json()
         assert "models" in data
         assert isinstance(data["models"], list)
-        assert len(data["models"]) >= 1
+        assert len(data["models"]) >= 9
 
     def test_kimi_k25_in_response(self, client):
         resp = client.get(

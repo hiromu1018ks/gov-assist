@@ -22,8 +22,64 @@ class ModelConfig:
 
 # §4.2 モデル設定テーブル
 MODEL_CONFIGS: dict[str, ModelConfig] = {
+    "Qwen3-Coder-30B-A3B-Instruct": ModelConfig(
+        display_name="Qwen3-Coder 30B",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "Qwen3-Coder-480B-A35B-Instruct-FP8": ModelConfig(
+        display_name="Qwen3-Coder 480B",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
     "gpt-oss-120b": ModelConfig(
         display_name="GPT-OSS 120B",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "llm-jp-3.1-8x13b-instruct4": ModelConfig(
+        display_name="llm-jp 3.1 8x13B",
+        max_tokens=2048,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "preview/Kimi-K2.5": ModelConfig(
+        display_name="Kimi K2.5",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "preview/Phi-4-mini-instruct-cpu": ModelConfig(
+        display_name="Phi-4 mini (CPU)",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "preview/Phi-4-multimodal-instruct": ModelConfig(
+        display_name="Phi-4 Multimodal",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "preview/Qwen3-0.6B-cpu": ModelConfig(
+        display_name="Qwen3 0.6B (CPU)",
+        max_tokens=4096,
+        temperature=0.3,
+        max_input_chars=8000,
+        json_forced=True,
+    ),
+    "preview/Qwen3-VL-30B-A3B-Instruct": ModelConfig(
+        display_name="Qwen3-VL 30B",
         max_tokens=4096,
         temperature=0.3,
         max_input_chars=8000,
