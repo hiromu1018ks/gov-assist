@@ -64,6 +64,7 @@ def get_db():
     session = _SessionLocal()
     try:
         yield session
+        session.commit()
     finally:
         session.close()
 
