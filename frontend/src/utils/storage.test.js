@@ -9,7 +9,7 @@ describe('loadSettings', () => {
   it('returns defaults when nothing is stored', () => {
     const settings = loadSettings();
     expect(settings.version).toBe(1);
-    expect(settings.model).toBe('kimi-k2.5');
+    expect(settings.model).toBe('gpt-oss-120b');
     expect(settings.document_type).toBe('official');
     expect(settings.options.typo).toBe(true);
     expect(settings.options.legal).toBe(false);
@@ -33,7 +33,7 @@ describe('loadSettings', () => {
   it('returns defaults when localStorage has corrupted data', () => {
     localStorage.setItem('govassist_settings', 'not-json{{{');
     const settings = loadSettings();
-    expect(settings.model).toBe('kimi-k2.5');
+    expect(settings.model).toBe('gpt-oss-120b');
     expect(settings.version).toBe(1);
   });
 

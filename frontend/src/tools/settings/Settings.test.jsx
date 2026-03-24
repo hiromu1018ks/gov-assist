@@ -12,7 +12,7 @@ vi.mock('../../api/client', () => ({
 vi.mock('../../utils/storage', () => ({
   loadSettings: vi.fn(() => ({
     version: 1,
-    model: 'kimi-k2.5',
+    model: 'gpt-oss-120b',
     document_type: 'official',
     options: {
       typo: true, keigo: true, terminology: true,
@@ -33,7 +33,7 @@ const mockSaveSettings = vi.mocked(saveSettings);
 
 const MODELS_RESPONSE = {
   models: [
-    { model_id: 'kimi-k2.5', display_name: 'Kimi K2.5', max_tokens: 4096, temperature: 0.3, max_input_chars: 8000, json_forced: true },
+    { model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B', max_tokens: 4096, temperature: 0.3, max_input_chars: 8000, json_forced: true },
     { model_id: 'gpt-4o', display_name: 'GPT-4o', max_tokens: 4096, temperature: 0.3, max_input_chars: 8000, json_forced: true },
   ],
 };
@@ -60,7 +60,7 @@ describe('Settings', () => {
     // Default mock return for loadSettings
     mockLoadSettings.mockReturnValue({
       version: 1,
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'official',
       options: {
         typo: true, keigo: true, terminology: true,
@@ -89,7 +89,7 @@ describe('Settings', () => {
   it('renders model selection section with loaded models', async () => {
     setup();
     await waitFor(() => {
-      expect(screen.getByText('Kimi K2.5')).toBeInTheDocument();
+      expect(screen.getByText('GPT-OSS 120B')).toBeInTheDocument();
       expect(screen.getByText('GPT-4o')).toBeInTheDocument();
     });
   });
@@ -97,7 +97,7 @@ describe('Settings', () => {
   it('shows currently selected model from localStorage', async () => {
     setup();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Kimi K2.5')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('GPT-OSS 120B')).toBeInTheDocument();
     });
   });
 
@@ -123,9 +123,9 @@ describe('Settings', () => {
     });
     setup();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Kimi K2.5')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('GPT-OSS 120B')).toBeInTheDocument();
       expect(mockSaveSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'kimi-k2.5' })
+        expect.objectContaining({ model: 'gpt-oss-120b' })
       );
     });
   });

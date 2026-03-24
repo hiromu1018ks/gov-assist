@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 const BOOT_LINES = [
   'GOV_ASSIST BIOS v2.0 — POST check...',
   'Memory test... 8192K OK',
-  'Loading AI kernel... kimi-k2.5',
+  'Loading AI kernel... gpt-oss-120b',
   'Connecting to localhost:8000... CONNECTED',
   'Mounting SQLite database... MOUNTED',
   '[ SYSTEM READY ]',

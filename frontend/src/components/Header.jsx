@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadSettings, saveSettings } from '../utils/storage';
 import { apiGet } from '../api/client';
 
-const DEFAULT_MODEL = { model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' };
+const DEFAULT_MODEL = { model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B' };
 
 function Header() {
   const navigate = useNavigate();
@@ -42,7 +42,6 @@ function Header() {
         <span className="status-bar__indicator">● ONLINE</span>
       </div>
       <div className="status-bar__right">
-        <span>[ AI: {models.find(m => m.model_id === selectedModel)?.display_name || selectedModel} ]</span>
         <div className="status-bar__actions">
           <select
             className="select"

@@ -136,6 +136,11 @@
   cursor: pointer;
 }
 
+.select option {
+  background-color: #0d1117;
+  color: var(--color-text);
+}
+
 /* --- Label --- */
 
 .label {

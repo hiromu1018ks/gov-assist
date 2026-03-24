@@ -28,7 +28,7 @@ const mockItems = (count, startId = 1) =>
     id: startId + i,
     preview: `テスト文書${startId + i}`,
     document_type: 'official',
-    model: 'kimi-k2.5',
+    model: 'gpt-oss-120b',
     created_at: new Date(Date.now() - i * 86400000).toISOString(),
     truncated: false,
     memo: null,

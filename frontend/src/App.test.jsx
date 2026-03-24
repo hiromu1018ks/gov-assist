@@ -10,7 +10,7 @@ vi.mock('./context/AuthContext', () => ({
 
 // Mock storage utility
 vi.mock('./utils/storage', () => ({
-  loadSettings: vi.fn(() => ({ version: 1, model: 'kimi-k2.5', document_type: 'official', options: {} })),
+  loadSettings: vi.fn(() => ({ version: 1, model: 'gpt-oss-120b', document_type: 'official', options: {} })),
   saveSettings: vi.fn(),
 }));
 

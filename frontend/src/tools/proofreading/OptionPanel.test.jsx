@@ -15,7 +15,7 @@ describe('OptionPanel', () => {
     vi.clearAllMocks();
     vi.mocked(loadSettings).mockReturnValue({
       version: 1,
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'official',
       options: {
         typo: true,
@@ -133,7 +133,7 @@ describe('OptionPanel', () => {
   it('initializes from localStorage custom settings', () => {
     vi.mocked(loadSettings).mockReturnValue({
       version: 1,
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'email',
       options: {
         typo: false,
@@ -154,7 +154,7 @@ describe('OptionPanel', () => {
   it('handles missing options in localStorage gracefully', () => {
     vi.mocked(loadSettings).mockReturnValue({
       version: 1,
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'official',
       // options is undefined — should not crash
     });

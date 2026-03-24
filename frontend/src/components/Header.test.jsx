@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 // Mock storage utility
 vi.mock('../utils/storage', () => ({
-  loadSettings: vi.fn(() => ({ version: 1, model: 'kimi-k2.5', document_type: 'official', options: {} })),
+  loadSettings: vi.fn(() => ({ version: 1, model: 'gpt-oss-120b', document_type: 'official', options: {} })),
   saveSettings: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ function renderWithRouter(ui) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
-function mockApiGetSuccess(models = [{ model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' }]) {
+function mockApiGetSuccess(models = [{ model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B' }]) {
   apiGet.mockResolvedValue({ models });
 }
 
@@ -34,9 +34,9 @@ function mockApiGetError(error) {
 describe('Header', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.mocked(loadSettings).mockReturnValue({ version: 1, model: 'kimi-k2.5', document_type: 'official', options: {} });
+    vi.mocked(loadSettings).mockReturnValue({ version: 1, model: 'gpt-oss-120b', document_type: 'official', options: {} });
     // Default: apiGet resolves successfully so sync render tests don't crash
-    apiGet.mockResolvedValue({ models: [{ model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' }] });
+    apiGet.mockResolvedValue({ models: [{ model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B' }] });
   });
 
   it('renders app title', () => {
@@ -59,13 +59,13 @@ describe('Header', () => {
     renderWithRouter(<Header />);
 
     await waitFor(() => {
-      expect(screen.getByText('Kimi K2.5')).toBeInTheDocument();
+      expect(screen.getByText('GPT-OSS 120B')).toBeInTheDocument();
     });
   });
 
   it('fetches and displays models from API', async () => {
     mockApiGetSuccess([
-      { model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' },
+      { model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B' },
       { model_id: 'gpt-4', display_name: 'GPT-4' },
     ]);
     renderWithRouter(<Header />);
@@ -73,12 +73,12 @@ describe('Header', () => {
     await waitFor(() => {
       expect(screen.getByText('GPT-4')).toBeInTheDocument();
     });
-    expect(screen.getByText('Kimi K2.5')).toBeInTheDocument();
+    expect(screen.getByText('GPT-OSS 120B')).toBeInTheDocument();
   });
 
   it('saves selected model to storage on change', async () => {
     mockApiGetSuccess([
-      { model_id: 'kimi-k2.5', display_name: 'Kimi K2.5' },
+      { model_id: 'gpt-oss-120b', display_name: 'GPT-OSS 120B' },
       { model_id: 'gpt-4', display_name: 'GPT-4' },
     ]);
 

@@ -3,7 +3,7 @@ const CURRENT_VERSION = 1;
 
 const DEFAULTS = {
   version: CURRENT_VERSION,
-  model: 'kimi-k2.5',
+  model: 'gpt-oss-120b',
   document_type: 'official',
   options: {
     typo: true,

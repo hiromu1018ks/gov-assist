@@ -15,7 +15,7 @@ vi.mock('../../api/client', () => ({
 
 vi.mock('../../utils/storage', () => ({
   loadSettings: vi.fn(() => ({
-    model: 'kimi-k2.5',
+    model: 'gpt-oss-120b',
     document_type: 'official',
     options: { typo: true, keigo: true, terminology: true, style: true, legal: false, readability: true },
   })),

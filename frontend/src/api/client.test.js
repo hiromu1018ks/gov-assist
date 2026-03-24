@@ -89,11 +89,11 @@ describe('API client', () => {
   });
 
   it('returns parsed JSON on success', async () => {
-    mockFetchJson({ models: [{ model_id: 'kimi-k2.5' }] });
+    mockFetchJson({ models: [{ model_id: 'gpt-oss-120b' }] });
 
     const data = await apiGet('/api/models');
 
-    expect(data).toEqual({ models: [{ model_id: 'kimi-k2.5' }] });
+    expect(data).toEqual({ models: [{ model_id: 'gpt-oss-120b' }] });
   });
 
   it('throws ApiError on 500 without clearing token', async () => {

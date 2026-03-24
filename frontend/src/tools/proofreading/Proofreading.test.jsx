@@ -12,7 +12,7 @@ vi.mock('../../api/client', () => ({
 
 vi.mock('../../utils/storage', () => ({
   loadSettings: vi.fn(() => ({
-    model: 'kimi-k2.5',
+    model: 'gpt-oss-120b',
     document_type: 'official',
     options: { typo: true, keigo: true, terminology: true, style: true, legal: false, readability: true },
   })),
@@ -98,7 +98,7 @@ describe('Proofreading', () => {
       request_id: expect.stringMatching(/^[0-9a-f-]+$/),
       text: 'テストテキスト',
       document_type: 'official',
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
     }));
   });
 
@@ -435,7 +435,7 @@ describe('Proofreading', () => {
     // Verify raw text is sent as input_text (the text the user typed)
     expect(mockApiPost).toHaveBeenCalledWith('/api/history', expect.objectContaining({
       input_text: 'テストテキスト',
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'official',
     }));
 

@@ -9,7 +9,7 @@ vi.mock('./fileExtractor', () => ({
 vi.mock('../../utils/storage', () => ({
   loadSettings: vi.fn(() => ({
     version: 1,
-    model: 'kimi-k2.5',
+    model: 'gpt-oss-120b',
     document_type: 'official',
     options: {},
   })),
@@ -26,7 +26,7 @@ describe('InputArea', () => {
     vi.clearAllMocks();
     vi.mocked(loadSettings).mockReturnValue({
       version: 1,
-      model: 'kimi-k2.5',
+      model: 'gpt-oss-120b',
       document_type: 'official',
       options: {},
     });
@@ -56,7 +56,7 @@ describe('InputArea', () => {
 
   it('defaults document type to saved setting', () => {
     vi.mocked(loadSettings).mockReturnValue({
-      version: 1, model: 'kimi-k2.5', document_type: 'report', options: {},
+      version: 1, model: 'gpt-oss-120b', document_type: 'report', options: {},
     });
     renderInputArea();
 
