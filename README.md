@@ -41,7 +41,6 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env を編集して APIキーとトークンを設定
 alembic upgrade head
-uvicorn main:app --reload
 ```
 
 ### フロントエンド
@@ -49,10 +48,26 @@ uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev
 ```
 
-ブラウザで `http://localhost:5173` にアクセス。初回表示時に `.env` で設定した `APP_TOKEN` を入力してログインします。
+## 開発サーバー起動
+
+```bash
+./dev.sh
+```
+
+tmuxセッション `gov-assist` が立ち上がり、左右分割で以下が起動します:
+
+- 左ペイン: Backend（uvicorn --reload、port 8000）
+- 右ペイン: Frontend（Vite、port 5173）
+
+ブラウザで `http://localhost:5173` にアクセスしてください。
+
+| 操作 | キー/コマンド |
+|------|-------------|
+| デタッチ（ターミナルに戻る） | `Ctrl+B`, `D` |
+| 再接続 | `tmux attach -t gov-assist` |
+| サーバーを完全に終了 | `tmux kill-session -t gov-assist` |
 
 ### 環境変数
 

@@ -28,17 +28,13 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
 fi
 
 # create session with backend in left pane
-tmux new-session -d -s "$SESSION" -c backend -n dev
+tmux new-session -d -s "$SESSION" -c backend -n dev "source .venv/bin/activate && uvicorn main:app --reload; exec bash"
 
 # split right, run frontend
-tmux split-window -h -t "$SESSION:dev" -c frontend
-tmux send-keys -t "$SESSION:dev.1" "npm run dev" Enter
-
-# start backend in left pane
-tmux send-keys -t "$SESSION:dev.0" "uvicorn main:app --reload" Enter
+tmux split-window -h -t "$SESSION:dev" -c frontend "npm run dev; exec bash"
 
 # focus left pane
-tmux select-pane -t "$SESSION:dev.0"
+tmux select-pane -L -t "$SESSION:dev"
 
 # attach
 exec tmux attach -t "$SESSION"
