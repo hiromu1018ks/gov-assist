@@ -49,6 +49,11 @@ dev.sh
 - tmux未インストール: インストール方法を案内して `exit 1`
 - backend/frontend ディレクトリ不存在: メッセージ表示して `exit 1`
 
+## 前提条件
+
+- Python仮想環境が有効化されていること（`uvicorn` がパスに通っていること）
+- `frontend/node_modules/` がインストール済みであること（`cd frontend && npm install`）
+
 ## 使い方
 
 ```bash
