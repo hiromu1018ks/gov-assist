@@ -1,6 +1,7 @@
 // src/App.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock useAuth — App is always rendered as authenticated in these layout tests
@@ -54,23 +55,23 @@ describe('App', () => {
     expect(within(sidebar).getByText('設定')).toBeInTheDocument();
   });
 
-  it('renders proofreading tool on default route /', () => {
+  it('renders proofreading tool on default route /', async () => {
     renderApp('/');
     const main = screen.getByRole('main');
-    expect(within(main).getByText('AI 文書校正')).toBeInTheDocument();
+    await waitFor(() => expect(within(main).getByText('AI 文書校正')).toBeInTheDocument());
     expect(within(main).getByText(/外部 AI サービス/)).toBeInTheDocument();
   });
 
-  it('renders settings placeholder on /settings route', () => {
+  it('renders settings placeholder on /settings route', async () => {
     renderApp('/settings');
     const main = screen.getByRole('main');
-    expect(within(main).getByText('設定')).toBeInTheDocument();
+    await waitFor(() => expect(within(main).getByText('設定')).toBeInTheDocument());
     expect(within(main).getByText('AI モデル')).toBeInTheDocument();
   });
 
-  it('redirects unknown routes to /', () => {
+  it('redirects unknown routes to /', async () => {
     renderApp('/unknown-page');
     const main = screen.getByRole('main');
-    expect(within(main).getByText(/外部 AI サービス/)).toBeInTheDocument();
+    await waitFor(() => expect(within(main).getByText(/外部 AI サービス/)).toBeInTheDocument());
   });
 });

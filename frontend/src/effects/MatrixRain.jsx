@@ -69,6 +69,8 @@ export default function MatrixRain() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
+      width={typeof window !== 'undefined' ? window.innerWidth : 0}
+      height={typeof window !== 'undefined' ? window.innerHeight : 0}
       style={{
         position: 'fixed',
         top: 0,

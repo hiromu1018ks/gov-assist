@@ -1,11 +1,16 @@
-import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';
+let pdfWorkerInitialized = false;
 
-// Set up pdf.js worker for Vite bundling
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+async function getPdfjsLib() {
+  const pdfjsLib = await import('pdfjs-dist');
+  if (!pdfWorkerInitialized) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).toString();
+    pdfWorkerInitialized = true;
+  }
+  return pdfjsLib;
+}
 
 /**
  * Extract text from a .docx or .pdf file.
@@ -30,6 +35,7 @@ export async function extractText(file) {
 }
 
 async function extractDocx(file) {
+  const { default: mammoth } = await import('mammoth');
   const arrayBuffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer });
   const text = result.value.trim();
@@ -42,6 +48,7 @@ async function extractDocx(file) {
 }
 
 async function extractPdf(file) {
+  const pdfjsLib = await getPdfjsLib();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 

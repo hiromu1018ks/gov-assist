@@ -74,7 +74,10 @@ export default function BootSequence({ onComplete }) {
       aria-live="polite"
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
         background: '#000',
         zIndex: 10000,
         display: 'flex',
